@@ -40,7 +40,6 @@
   "scripts": {
     "pretest": "npm install",
     "test": "./node_modules/.bin/karma start tests/karma.conf.js",
-    "prestart": "gulp build",
     "start": "node --harmony_destructuring --harmony-proxies --harmony_default_parameters ./backend/index.js"
   },
   "dependencies": {
