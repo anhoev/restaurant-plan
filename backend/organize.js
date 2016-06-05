@@ -48,7 +48,7 @@ module.exports = (cms) => {
         <div ng-init="fn.onInit()">
             <div class="hidden-print">                
                 <div class="form-group">
-                    <label>Choose company:</label>
+                    <label>Firma auswählen:</label>
                     <ui-select data-ng-model="model.company" on-select="model.chooseCompany($item)" theme="bootstrap">
                         <ui-select-match placeholder="Choose company">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices data-repeat="item.name as item in model.companies | filterBy: ['name']: $select.search">
@@ -58,7 +58,7 @@ module.exports = (cms) => {
                 </div>
                 
                 <div class="form-group">
-                    <label>Choose Employees:</label>
+                    <label>Mitarbeiten auswählen:</label>
                     <ui-select multiple  data-ng-model="model._employees" theme="bootstrap">
                         <ui-select-match placeholder="Choose Employees">{{$item.name}}</ui-select-match>
                         <ui-select-choices data-repeat="item in model.employeeList | filterBy: ['name']: $select.search">
@@ -68,16 +68,16 @@ module.exports = (cms) => {
                 </div>
                 
                 <div class="form-group">
-                    <label>Choose month:</label>
+                    <label>Monat:</label>
                     <input type="month" class="form-control" ng-model="model.month">
                 </div>
                
-                <button class="btn btn-white btn-sm" ng-click="model.calculateRange(model.month)">Calculate</button>
+                <button class="btn btn-white btn-sm" ng-click="model.calculateRange(model.month)">Rechnen</button>
             </div>
             
             <div ng-if="model._calculated">
                 <div ng-repeat="week in model.weeks" style="page-break-after:always;page-break-inside: avoid;">
-                    <h4>Week {{$index}}</h4>
+                    <h4>Woche {{$index}}</h4>
                     <table border="1">
                         <tr>
                             <th ng-repeat="_day in model.weekday2" style="padding-left: 20px;padding-right: 20px;vertical-align: top" ng-init="_index = $index">
