@@ -8,9 +8,9 @@ cms.data.categories = [{Type: {Human: null, Animal: null}}, {Type2: {Human: null
 const resolvePath = cms.resolvePath = (p) => `backend/${p}`;
 cms.data.security = false;
 cms.listen(8888);
-mongoose.connect('mongodb://localhost/mobile');
+mongoose.connect('mongodb://localhost/mobile2');
 
 cms.use(require('cmsmon/mobile'));
-cms.use(require('./organize'));
+cms.use(require('./fingerscanner'));
 
 cms.server('backend/en', '/en');

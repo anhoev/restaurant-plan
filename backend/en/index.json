@@ -5,33 +5,16 @@
       "name": "main",
       "elements": [
         {
-          "type": "PageLayout",
-          "ref": "56e86e49ad23639f50360cd4",
+          "type": "Layout",
+          "ref": "57581c4d2a0e46211ef22a1d",
           "containers": [
             {
-              "name": "rootpage",
-              "elements": [
-                {
-                  "type": "Layout",
-                  "ref": "56e86e9dad23639f50360cd8",
-                  "containers": [
-                    {
-                      "name": "56e86eeaad23639f50360cda-0",
-                      "elements": [
-                        {
-                          "type": "Wrapper",
-                          "ref": "56e8781f5f9aa7db66419356",
-                          "containers": []
-                        }
-                      ]
-                    },
-                    {
-                      "name": "57496f7332cac1d55a2a4e72-0",
-                      "elements": []
-                    }
-                  ]
-                }
-              ]
+              "name": "-0",
+              "elements": []
+            },
+            {
+              "name": "57581c852a0e46211ef22a1f-0",
+              "elements": []
             }
           ]
         }
