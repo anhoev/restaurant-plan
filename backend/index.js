@@ -13,4 +13,4 @@ mongoose.connect('mongodb://localhost/mobile');
 cms.use(require('cmsmon/mobile'));
 cms.use(require('./organize'));
 
-cms.server('backend/en', '/en');
+cms.server('backend/en', '/');

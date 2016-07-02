@@ -359,6 +359,7 @@ module.exports = (cms) => {
 
     const Employee = cms.registerSchema({
         name: {type: String, default: 'Employee'},
+        id: String,
         position: {type: String, form: makeSelect('waiter', 'chef', 'manager')},
         maxHour: Number,
         company: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}]
