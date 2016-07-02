@@ -180,7 +180,8 @@ module.exports = (cms) => {
                     const days = getDaysInMonth(d1, m1, y1, d2, m2, y2);
                     let shifts = [];
                     Types.Shift.list.filter(shift => shift.company.name === model.company).forEach(shift => {
-                        for (let i = 0; i < shift.numberOfEmployees > 0 ? shift.numberOfEmployees : 1; i++) {
+                        const numberOfEmployees = shift.numberOfEmployees && shift.numberOfEmployees > 0 ? shift.numberOfEmployees : 1;
+                        for (let i = 0; i < numberOfEmployees; i++) {
                             shifts.push({
                                 beginHour: shift.beginHour,
                                 endHour: shift.endHour < shift.beginHour ? shift.endHour + 24 : shift.endHour,
