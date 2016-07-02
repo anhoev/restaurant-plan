@@ -178,14 +178,17 @@ module.exports = (cms) => {
 
                 function genShifts(d1, m1, y1, d2, m2, y2) {
                     const days = getDaysInMonth(d1, m1, y1, d2, m2, y2);
-                    let shifts = Types.Shift.list.filter(shift => shift.company.name === model.company).map(shift => {
-                        return {
-                            beginHour: shift.beginHour,
-                            endHour: shift.endHour < shift.beginHour ? shift.endHour + 24 : shift.endHour,
-                            workingTime: Types.Shift.fn.getWorkingTime.bind(shift)(),
-                            weekDay: shift.weekDay,
-                            _id: shift._id
-                        };
+                    let shifts = [];
+                    Types.Shift.list.filter(shift => shift.company.name === model.company).forEach(shift => {
+                        for (let i = 0; i < shift.numberOfEmployees > 0 ? shift.numberOfEmployees : 1; i++) {
+                            shifts.push({
+                                beginHour: shift.beginHour,
+                                endHour: shift.endHour < shift.beginHour ? shift.endHour + 24 : shift.endHour,
+                                workingTime: Types.Shift.fn.getWorkingTime.bind(shift)(),
+                                weekDay: shift.weekDay,
+                                _id: shift._id
+                            });
+                        }
                     });
                     const result = [];
                     const _days = days.map(day => {
@@ -390,7 +393,8 @@ module.exports = (cms) => {
         },
         beginHour: Number,
         endHour: Number,
-        company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}
+        company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true},
+        numberOfEmployees: {type: Number, default: 1, form: {templateOptions: {label: "number of employees"}}}
     }, {
         name: 'Shift',
         formatter: `
