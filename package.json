@@ -1,11 +1,11 @@
 {
-  "name": "cms-plan",
+  "name": "cms-fingerscanner",
   "version": "0.0.0",
   "description": "",
   "main": "index.html",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anhoev/cms-plan.git"
+    "url": "https://github.com/anhoev/cms-fingerscanner.git"
   },
   "author": "Tran Tuan Anh <anhoev@yahoo.de>",
   "private": true,
