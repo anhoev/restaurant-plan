@@ -123,12 +123,6 @@ module.exports = (cms) => {
     `,
         ID: String,
         fn: {
-            getShifts: function () {
-                return Types.Shift.list.map(shift => {
-                    shift.$workingTime = Types.Shift.fn.getWorkingTime.bind(shift)();
-                    return shift;
-                });
-            },
             onInit: function () {
                 const model = this;
 
@@ -151,12 +145,6 @@ module.exports = (cms) => {
                     }
 
                     return array;
-                }
-
-                function createNextMenge(menge) {
-                    return menge.map(shift => {
-                        return {workingTime: shift.workingTime, name: `S${parseInt(shift.name.substring(1)) + length}`};
-                    });
                 }
 
                 function sum(menge) {
@@ -395,7 +383,9 @@ module.exports = (cms) => {
         beginHour: Number,
         endHour: Number,
         company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true},
-        numberOfEmployees: {type: Number, default: 1, form: {templateOptions: {label: "number of employees"}}}
+        numberOfEmployees: {type: Number, default: 1, form: {templateOptions: {label: "number of employees"}}},
+        position: {type: String, form: makeSelect('waiter', 'chef', 'manager')},
+        maxExtendHour: {type: Number, default: 0}
     }, {
         name: 'Shift',
         formatter: `
