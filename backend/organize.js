@@ -4,45 +4,6 @@ module.exports = (cms) => {
 
     const {mongoose, utils:{makeSelect, makeMultiSelect, makeTypeSelect, makeStyles, makeCustomSelect}} = cms;
 
-    cms.registerWrapper('EmployeeForm', {
-        formatter: `
-        <h4>Form</h4>
-    `,
-        mTemplate: `
-    <GridLayout columns="*" rows="auto,auto,auto,auto" [init]="fn.init()">
-        <TextField row="1" [(ngModel)]="model.name" hint="Name"></TextField>
-        <TextField row="2" [(ngModel)]="model.maxHour" hint="maxHour"></TextField>
-        <TextField row="3" [(ngModel)]="model.position" hint="Position"></TextField>
-    </GridLayout>
-    <Button text="Submit" (tap)="fn.submit()" horizontalAlignment="left" ></Button>
-    `,
-        fn: {
-            init: function () {
-                this.position = 'Waiter';
-                this.positions = ['Waiter', 'Manager', 'Chef'];
-            },
-            submit: function () {
-                cms.createModel('Employee', null, {name: this.name, maxHour: this.maxHour, position: this.position});
-            },
-            link: function () {
-                try {
-                    this.router.navigate(['Cat']);
-                } catch (e) {
-                }
-            }
-        },
-        serverFn: {}
-    });
-
-    /*
-     <div ng-repeat="employee in model.employees" ng-init="shifts = employee.subMenge">
-     <h4>Name: {{employee.name}}</h4>
-     <div ng-repeat="shift in shifts">
-     Date: {{shift.day}}.{{shift.month}},weekDay:{{shift.weekDay}}, beginHour: {{shift.beginHour}}, endHour: {{shift.endHour}}
-     </div>
-     </div>
-     */
-
     cms.registerWrapper('Info', {
         formatter: `
         <div ng-init="fn.onInit()">
@@ -353,8 +314,11 @@ module.exports = (cms) => {
         name: {type: String, default: 'Employee'},
         Id: String,
         position: {type: String, form: makeSelect('waiter', 'chef', 'manager')},
-        maxHour: Number,
-        company: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}]
+        company: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}],
+        work: [{
+            maxHour: Number,
+            company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}
+        }]
     }, {
         name: 'Employee',
         formatter: `
