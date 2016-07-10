@@ -113,7 +113,7 @@ class PlanBuilder {
         }
 
         for (let plan of this.employeePlans) {
-            if (plan.employee.needFull) {
+            if (plan.employee.getFlexible(this.company)) {
                 if (plan.sum < plan.getMaxHour(this.company)) {
                     let overTime = plan.getMaxHour(this.company) - plan.sum;
                     let subMenge = [...plan.subMenge];
@@ -192,12 +192,17 @@ class EmployeePlan {
         this.employee = employee;
     }
 
+    getFlexible(companyId) {
+        const find = _.find(this.employee.work, work => work.company._id.toString() === companyId.toString());
+        return find.flexible;
+    }
+
     get sum() {
         return sum(this.subMenge);
     }
 
     getMaxHour(companyId) {
-        var find = _.find(this.employee.work, work => work.company._id.toString() === companyId.toString());
+        const find = _.find(this.employee.work, work => work.company._id.toString() === companyId.toString());
         return find ? find.maxHour : 0;
     }
 

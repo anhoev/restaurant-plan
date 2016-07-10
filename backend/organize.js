@@ -33,10 +33,10 @@ module.exports = (cms) => {
         position: {type: String, form: makeSelect('waiter', 'chef', 'manager')},
         company: [{type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}],
         work: [{
+            flexible: {type: Boolean, default: false},
             maxHour: Number,
             company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}
-        }],
-        needFull: Boolean
+        }]
     }, {
         name: 'Employee',
         formatter: `
