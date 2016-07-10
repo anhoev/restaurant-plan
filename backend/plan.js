@@ -113,17 +113,19 @@ class PlanBuilder {
         }
 
         for (let plan of this.employeePlans) {
-            if (plan.employee.getFlexible(this.company)) {
+            if (!plan.getFlexible(this.company)) {
                 if (plan.sum < plan.getMaxHour(this.company)) {
                     let overTime = plan.getMaxHour(this.company) - plan.sum;
                     let subMenge = [...plan.subMenge];
                     shuffle(subMenge);
                     while (overTime > 0) {
                         const shift = subMenge.shift();
-                        const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
-                        overTime = overTime - shift.maxOverTime >= 0 ? overTime - shift.maxOverTime : 0;
-                        shift.overTime = _overTime;
-                        shift.endHour = shift.endHour + _overTime;
+                        if (shift) {
+                            const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
+                            overTime = overTime - shift.maxOverTime >= 0 ? overTime - shift.maxOverTime : 0;
+                            shift.overTime = _overTime;
+                            shift.endHour = shift.endHour + _overTime;
+                        }
                     }
 
                 }
