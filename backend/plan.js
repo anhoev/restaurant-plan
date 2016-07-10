@@ -185,9 +185,12 @@ class EmployeePlan {
             const position = employee.position === 'chef' ? 'chef' : 'waiter';
             const found = _.find(plan[`${position}s`], {_id: employee._id});
             if (found) {
-                const employeePlan = _.find(plan[position === 'chef' ? 'planForChef' : 'planForWaiter'].employeePlans,
-                    employeePlan => employeePlan.employee._id.toString() === employee._id.toString());
-                if (employeePlan) this.anotherShifts = employeePlan.subMenge;
+                var plans = plan[position === 'chef' ? 'planForChef' : 'planForWaiter'];
+                if (plans) {
+                    const employeePlan = _.find(plans.employeePlans,
+                        employeePlan => employeePlan.employee._id.toString() === employee._id.toString());
+                    if (employeePlan) this.anotherShifts = employeePlan.subMenge;
+                }
             }
 
         }, []);
