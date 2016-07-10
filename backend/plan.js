@@ -212,7 +212,7 @@ class EmployeePlan {
 
     toJSON() {
         const result = _.assign({}, this);
-        result.subMenge = _.sortBy(result.subMenge, ['day']);
+        result.subMenge = result.subMenge.sort((a, b) => a.day - b.day);
         result.sum = this.sum;
         return result;
     }
