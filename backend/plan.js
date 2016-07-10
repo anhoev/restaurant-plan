@@ -164,6 +164,7 @@ class PlanBuilder {
         days.forEach(day => {
             week.push(day);
             if (day.day.getDay() === 0) {
+                console.log('day: ' + day.day.getDate());
                 weeks.push(week);
                 week = [];
             }
@@ -185,10 +186,9 @@ class EmployeePlan {
             const position = employee.position === 'chef' ? 'chef' : 'waiter';
             const found = _.find(plan[`${position}s`], {_id: employee._id});
             if (found) {
-                var plans = plan[position === 'chef' ? 'planForChef' : 'planForWaiter'];
-                if (plans) {
-                    const employeePlan = _.find(plans.employeePlans,
-                        employeePlan => employeePlan.employee._id.toString() === employee._id.toString());
+                const detailPlan = plan[position === 'chef' ? 'planForChef' : 'planForWaiter'];
+                if (detailPlan) {
+                    const employeePlan = _.find(detailPlan.employeePlans, employeePlan => employeePlan.employee._id.toString() === employee._id.toString());
                     if (employeePlan) this.anotherShifts = employeePlan.subMenge;
                 }
             }
