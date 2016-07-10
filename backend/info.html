@@ -1,0 +1,80 @@
+<div ng-init="fn.onInit()">
+    <div class="hidden-print">
+        <div class="form-group">
+            <label>Plan auswählen:</label>
+            <ui-select data-ng-model="model.plan" on-select="model.onSelect()" theme="bootstrap">
+                <ui-select-match placeholder="Choose plan">{{$select.selected.name}}</ui-select-match>
+                <ui-select-choices data-repeat="item._id as item in model.plans | filterBy: ['name']: $select.search">
+                    <div ng-bind-html="item.name | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+
+        <div class="form-group">
+            <label>Firma auswählen:</label>
+            <ui-select data-ng-model="model.company" on-select="model.onSelect()" theme="bootstrap">
+                <ui-select-match placeholder="Choose company">{{$select.selected.name}}</ui-select-match>
+                <ui-select-choices
+                        data-repeat="item._id as item in model.companyList | filterBy: ['name']: $select.search">
+                    <div ng-bind-html="item.name | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+
+        <div class="form-group">
+            <label>Stelle auswählen:</label>
+            <ui-select data-ng-model="model.position" on-select="model.onSelect()" theme="bootstrap">
+                <ui-select-match placeholder="Choose position">{{$select.selected}}</ui-select-match>
+                <ui-select-choices data-repeat="item in ['chef', 'waiter']">
+                    <div ng-bind-html="item"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+
+        <button class="btn btn-white btn-sm" ng-click="model.show()">Anzeigen</button>
+        <button class="btn btn-white btn-sm" ng-click="model.calculateRange()">Rechnen</button>
+    </div>
+
+    <div ng-if="model._calculated">
+        <div ng-repeat="week in model.weeks" style="page-break-after:always;page-break-inside: avoid;">
+            <h4>Woche {{$index}}</h4>
+            <table border="1">
+                <tr>
+                    <th ng-repeat="_day in model.weekday2"
+                        style="padding-left: 20px;padding-right: 20px;vertical-align: top" ng-init="_index = $index">
+                        <p>{{model.weekday[_day]}}</p>
+                        <div ng-repeat="day in week">
+                            <div ng-if="day.day.getDay() === _day">
+                                {{day.day.getDate()}}/{{day.day.getMonth() +1}}
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+                <tr style="padding-top: 10px;padding-bottom: 10px;">
+                    <td ng-repeat="_day in model.weekday2"
+                        style="padding-left: 20px;padding-right: 20px;vertical-align: top">
+                        <div ng-repeat="day in week">
+                            <div ng-if="day.day.getDay() === _day">
+                                <div ng-repeat="shift in day.shifts" ng-init="employee = shift.employee">
+                                    <div ng-if="employee !== null">
+                                        <p style="margin-bottom: 0px;">{{shift.beginHour}} - {{shift.endHour > 24? shift.endHour -24: shift.endHour}}</p>
+                                        <p>{{employee.name}}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div ng-repeat="plan in model.employeePlans" ng-init="shifts = plan.subMenge">
+        <h4>Name: {{plan.employee.name}}</h4>
+        <h4>Sum: {{plan.sum}}</h4>
+        <div ng-repeat="shift in shifts">
+            Date: {{shift.day}}.{{shift.month + 1}},weekDay:{{shift.weekDay}}, beginHour: {{shift.beginHour}}, endHour:
+            {{shift.endHour > 24? shift.endHour -24: shift.endHour}}
+            <span ng-if="shift.overTime">, overtime: {{shift.overTime}}</span>
+        </div>
+    </div>
+</div>
