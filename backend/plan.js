@@ -1,7 +1,7 @@
 'use strict';
 const JsonFn = require('json-fn');
 const _ = require('lodash');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const weekday = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
@@ -163,8 +163,7 @@ class PlanBuilder {
         let week = [];
         days.forEach(day => {
             week.push(day);
-            if (day.day.getDay() === 0) {
-                console.log('day: ' + day.day.getDate());
+            if (moment(day.day).tz('Europa/Berlin').day() === 0) {
                 weeks.push(week);
                 week = [];
             }
