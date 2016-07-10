@@ -163,7 +163,7 @@ class PlanBuilder {
         let week = [];
         days.forEach(day => {
             week.push(day);
-            if (moment(day.day).tz('Europa/Berlin').day() === 0) {
+            if (moment(day.day).tz('Europe/Berlin').day() === 0) {
                 weeks.push(week);
                 week = [];
             }
@@ -212,6 +212,7 @@ class EmployeePlan {
 
     toJSON() {
         const result = _.assign({}, this);
+        result.subMenge = _.sortBy(result.subMenge, ['day']);
         result.sum = this.sum;
         return result;
     }
