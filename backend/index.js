@@ -12,5 +12,6 @@ mongoose.connect('mongodb://localhost/mobile');
 
 cms.use(require('cmsmon/mobile'));
 cms.use(require('./organize'));
+cms.use(require('./fingerscanner'));
 
 cms.server('backend/en', '');

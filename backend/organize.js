@@ -36,6 +36,10 @@ module.exports = (cms) => {
             flexible: {type: Boolean, default: false},
             maxHour: Number,
             company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}
+        }],
+        fingerTemplate: [{
+            template: String,
+            size: Number
         }]
     }, {
         name: 'Employee',
@@ -54,16 +58,12 @@ module.exports = (cms) => {
             }
         },
         autopopulate: true,
-        alwaysLoad: true
+        alwaysLoad: true,
+        tabs: [
+            {title: 'basic'},
+            {title: 'finger', fields: ['fingerTemplate']}
+        ]
     });
-
-    const employeeConfig = {
-        type: [{type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: true}],
-        form: {
-            type: 'refSelect',
-            templateOptions: {Type: 'Employee', labelProp: cms.Types['Employee'].info.title, multiple: true}
-        }
-    };
 
     const Shift = cms.registerSchema({
         weekDay: {
@@ -97,6 +97,14 @@ module.exports = (cms) => {
         alwaysLoad: true
     });
 
+    const employeeConfig = {
+        type: [{type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: true}],
+        form: {
+            type: 'refSelect',
+            templateOptions: {Type: 'Employee', labelProp: cms.Types['Employee'].info.title, multiple: true}
+        }
+    };
+
 
     const Plan = cms.registerSchema({
         name: {type: String},
@@ -114,16 +122,13 @@ module.exports = (cms) => {
             },
             waiters: employeeConfig,
             chefs: employeeConfig,
-            company: {
-                type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true
-            }
+            company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: true}
         }],
         calculate: {
             type: Boolean, form: {
                 type: 'input', templateManipulators: {
                     preWrapper: [
                         function (template, options, scope) {
-
                             return `<button class="btn btn-sm" type="button" ng-class="{'btn-info': model[options.key], 'btn-white': !model[options.key]}">Rechnen</button>`;
                         }
                     ]
