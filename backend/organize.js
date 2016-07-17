@@ -65,7 +65,7 @@ module.exports = (cms) => {
         ],
         restifyOptions: {
             postRead: (req, res, next) => q.spawn(function*() {
-                if (req.url.indexOf('/count') === -1) {
+                if (req.url.indexOf('/count') === -1 && (_.endsWith(req.url, 'Employee') || _.endsWith(req.url, 'Employee/'))) {
                     const result = req.erm.result;
                     for (let employee of result) {
                         const events = yield cms.Types.CheckEvent.Model.find({
