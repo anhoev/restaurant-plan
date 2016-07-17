@@ -62,7 +62,31 @@ module.exports = (cms) => {
         tabs: [
             {title: 'basic'},
             {title: 'finger', fields: ['fingerTemplate']}
-        ]
+        ],
+        restifyOptions: {
+            postRead: (req, res, next) => Q.spawn(function*() {
+                if (req.url.indexOf('/count') === -1) {
+                    const result = req.erm.result;
+                    for (let employee of result) {
+                        const events = yield CheckEvent.find({
+                            employee: employee._id,
+                            time: {
+                                $gte: moment().startOf('day').add(4, 'h').utc(),
+                                $lt: moment().startOf('day').add(1, 'd').add(4, 'h').utc()
+                            }
+                        });
+
+                        const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
+                        const checkOuts = _.filter(events, ({isCheckIn, time}) => !isCheckIn);
+                        if (checkIns.length === checkOuts.length) employee.active = false;
+                        if (checkIns.length > checkOuts.length) employee.active = true;
+                    }
+                    next();
+                } else {
+                    next();
+                }
+            })
+        }
     });
 
     const Shift = cms.registerSchema({
