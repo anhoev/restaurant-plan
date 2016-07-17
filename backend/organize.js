@@ -64,7 +64,7 @@ module.exports = (cms) => {
             {title: 'finger', fields: ['fingerTemplate']}
         ],
         restifyOptions: {
-            postRead: (req, res, next) => Q.spawn(function*() {
+            postRead: (req, res, next) => q.spawn(function*() {
                 if (req.url.indexOf('/count') === -1) {
                     const result = req.erm.result;
                     for (let employee of result) {
