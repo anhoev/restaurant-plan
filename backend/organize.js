@@ -68,7 +68,7 @@ module.exports = (cms) => {
                 if (req.url.indexOf('/count') === -1) {
                     const result = req.erm.result;
                     for (let employee of result) {
-                        const events = yield CheckEvent.find({
+                        const events = yield cms.Types.CheckEvent.find({
                             employee: employee._id,
                             time: {
                                 $gte: moment().startOf('day').add(4, 'h').utc(),

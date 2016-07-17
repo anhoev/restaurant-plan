@@ -9,7 +9,7 @@ cms.listen(8888);
 mongoose.connect('mongodb://localhost/mobile');
 
 cms.use(require('cmsmon/mobile'));
-cms.use(require('./organize'));
 cms.use(require('./fingerscanner'));
+cms.use(require('./organize'));
 
 cms.server('backend/en', '');
