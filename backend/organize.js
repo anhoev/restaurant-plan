@@ -53,10 +53,7 @@ module.exports = (cms) => {
                 <Label text="{{model.name}} - {{model.position}} - {{model.maxHour}}"></Label>
             </StackLayout>
         `,
-        fn: {
-            order: function () {
-            }
-        },
+        fn: {},
         autopopulate: true,
         alwaysLoad: true,
         tabs: [
