@@ -12,7 +12,6 @@
   "license": "proprietary",
   "devDependencies": {},
   "scripts": {
-    "pretest": "npm install",
     "test": "node --harmony_destructuring --harmony-proxies --harmony_default_parameters ./backend/index.js",
     "start": "forever start -c 'node --harmony_destructuring --harmony-proxies --harmony_default_parameters' ./backend/index.js"
   },
