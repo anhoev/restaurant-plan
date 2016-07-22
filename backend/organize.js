@@ -66,8 +66,7 @@ module.exports = (cms) => {
                 const employee = this;
                 let active = false;
                 const Model = cms.Types.CheckEvent.Model;
-                let done = false;
-                let events;
+                let done = false, events;
                 Model.find({
                     employee: employee._id,
                     time: {
@@ -79,9 +78,7 @@ module.exports = (cms) => {
                     events = result;
                 });
 
-                deasync.loopWhile(function () {
-                    return !done;
-                });
+                deasync.loopWhile(()=>!done);
 
                 const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
                 const checkOuts = _.filter(events, ({isCheckIn, time}) => !isCheckIn);
@@ -91,17 +88,8 @@ module.exports = (cms) => {
                 return active;
 
             });
-
-            schema.set('toJSON', {virtuals: true});
-            schema.set('toObject', {virtuals: true});
         }
     });
-
-    q.spawn(function*() {
-        const employee = yield Employee.findOne({});
-        const e = employee.toJSON();
-        const a = 5;
-    })
 
     const Shift = cms.registerSchema({
         weekDay: {
