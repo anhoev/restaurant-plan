@@ -70,8 +70,8 @@ module.exports = (cms) => {
                 Model.find({
                     employee: employee._id,
                     time: {
-                        $gte: moment().tz('Europe/Berlin').startOf('day').add(4, 'h').toDate(),
-                        $lt: moment().tz('Europe/Berlin').startOf('day').add(1, 'd').add(4, 'h').toDate()
+                        $gte: moment().tz('Europe/Berlin').subtract(4,'hour').startOf('day').add(4, 'hour').toDate(),
+                        $lt: moment().tz('Europe/Berlin').subtract(4,'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
                     }
                 }).exec(function (err, result) {
                     done = true;
@@ -80,8 +80,8 @@ module.exports = (cms) => {
 
                 deasync.loopWhile(()=>!done);
 
-                const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
-                const checkOuts = _.filter(events, ({isCheckIn, time}) => !isCheckIn);
+                const checkIns = _.filter(events, ({isCheckIn}) => isCheckIn);
+                const checkOuts = _.filter(events, ({isCheckIn}) => !isCheckIn);
                 if (checkIns.length === checkOuts.length) active = false;
                 if (checkIns.length > checkOuts.length) active = true;
 
