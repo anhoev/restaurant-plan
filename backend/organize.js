@@ -4,7 +4,7 @@ const _ = require('lodash');
 const path = require('path');
 const PlanBuilder = require('./plan');
 const q = require('q');
-const moment = require('moment');
+const moment = require('moment-timezone');
 var deasync = require('deasync');
 
 module.exports = (cms) => {
@@ -70,8 +70,8 @@ module.exports = (cms) => {
                 Model.find({
                     employee: employee._id,
                     time: {
-                        $gte: moment().startOf('day').add(4, 'h').utc(),
-                        $lt: moment().startOf('day').add(1, 'd').add(4, 'h').utc()
+                        $gte: moment().tz('Europe/Berlin').startOf('day').add(4, 'h').toDate(),
+                        $lt: moment().tz('Europe/Berlin').startOf('day').add(1, 'd').add(4, 'h').toDate()
                     }
                 }).exec(function (err, result) {
                     done = true;
