@@ -60,29 +60,24 @@ module.exports = (cms) => {
             {title: 'basic'},
             {title: 'finger', fields: ['fingerTemplate']}
         ],
-        restifyOptions: {
-            postRead: (req, res, next) => q.spawn(function*() {
-                if (req.url.indexOf('/count') === -1 && (_.endsWith(req.url, 'Employee') || _.endsWith(req.url, 'Employee/'))) {
-                    const result = req.erm.result;
-                    for (let employee of result) {
-                        const events = yield cms.Types.CheckEvent.Model.find({
-                            employee: employee._id,
-                            time: {
-                                $gte: moment().startOf('day').add(4, 'h').utc(),
-                                $lt: moment().startOf('day').add(1, 'd').add(4, 'h').utc()
-                            }
-                        });
-
-                        const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
-                        const checkOuts = _.filter(events, ({isCheckIn, time}) => !isCheckIn);
-                        if (checkIns.length === checkOuts.length) employee.active = false;
-                        if (checkIns.length > checkOuts.length) employee.active = true;
+        initSchema: function (schema) {
+            schema.virtual('active').get((next) => q.spawn(function*() {
+                let active;
+                const events = yield cms.Types.CheckEvent.Model.find({
+                    employee: this._id,
+                    time: {
+                        $gte: moment().startOf('day').add(4, 'h').utc(),
+                        $lt: moment().startOf('day').add(1, 'd').add(4, 'h').utc()
                     }
-                    next();
-                } else {
-                    next();
-                }
-            })
+                });
+
+                const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
+                const checkOuts = _.filter(events, ({isCheckIn, time}) => !isCheckIn);
+                if (checkIns.length === checkOuts.length) active = false;
+                if (checkIns.length > checkOuts.length) active = true;
+
+                next(active);
+            }));
         }
     });
 
