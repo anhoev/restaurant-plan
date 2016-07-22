@@ -5,6 +5,7 @@ const path = require('path');
 const PlanBuilder = require('./plan');
 const q = require('q');
 const moment = require('moment');
+var deasync = require('deasync');
 
 module.exports = (cms) => {
 
@@ -61,14 +62,25 @@ module.exports = (cms) => {
             {title: 'finger', fields: ['fingerTemplate']}
         ],
         initSchema: function (schema) {
-            schema.virtual('active').get((next) => q.spawn(function*() {
-                let active;
-                const events = yield cms.Types.CheckEvent.Model.find({
-                    employee: this._id,
+            schema.virtual('active').get(function () {
+                const employee = this;
+                let active = false;
+                const Model = cms.Types.CheckEvent.Model;
+                let done = false;
+                let events;
+                Model.find({
+                    employee: employee._id,
                     time: {
                         $gte: moment().startOf('day').add(4, 'h').utc(),
                         $lt: moment().startOf('day').add(1, 'd').add(4, 'h').utc()
                     }
+                }).exec(function (err, result) {
+                    done = true;
+                    events = result;
+                });
+
+                deasync.loopWhile(function () {
+                    return !done;
                 });
 
                 const checkIns = _.filter(events, ({isCheckIn, time}) => isCheckIn);
@@ -76,10 +88,20 @@ module.exports = (cms) => {
                 if (checkIns.length === checkOuts.length) active = false;
                 if (checkIns.length > checkOuts.length) active = true;
 
-                next(active);
-            }));
+                return active;
+
+            });
+
+            schema.set('toJSON', {virtuals: true});
+            schema.set('toObject', {virtuals: true});
         }
     });
+
+    q.spawn(function*() {
+        const employee = yield Employee.findOne({});
+        const e = employee.toJSON();
+        const a = 5;
+    })
 
     const Shift = cms.registerSchema({
         weekDay: {

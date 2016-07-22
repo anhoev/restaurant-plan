@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "cmsmon": "git+https://github.com/anhoev/cms.git",
+    "deasync": "^0.1.7",
     "moment-timezone": "^0.5.4",
     "q": "^1.4.1"
   }
