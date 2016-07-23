@@ -63,15 +63,12 @@ module.exports = (cms) => {
         ],
         initSchema: function (schema) {
             schema.virtual('active').get(function () {
-                const employee = this;
-                let active = false;
-                const Model = cms.Types.CheckEvent.Model;
-                let done = false, events;
-                Model.find({
-                    employee: employee._id,
+                let active = false, done = false, events;
+                cms.Types.CheckEvent.Model.find({
+                    employee: this._id,
                     time: {
-                        $gte: moment().tz('Europe/Berlin').subtract(4,'hour').startOf('day').add(4, 'hour').toDate(),
-                        $lt: moment().tz('Europe/Berlin').subtract(4,'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
+                        $gte: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(4, 'hour').toDate(),
+                        $lt: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
                     }
                 }).exec(function (err, result) {
                     done = true;
