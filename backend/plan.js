@@ -118,7 +118,7 @@ class PlanBuilder {
                     let overTime = plan.getMaxHour(this.company) - plan.sum;
                     let subMenge = [...plan.subMenge];
                     shuffle(subMenge);
-                    while (overTime > 0) {
+                    while (overTime > 0 && subMenge.length > 0) {
                         const shift = subMenge.shift();
                         if (shift) {
                             const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
