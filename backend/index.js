@@ -14,3 +14,5 @@ cms.use(require('./fingerscanner'));
 cms.use(require('./organize'));
 
 cms.server('backend/en', '');
+
+cms.data.online.wsAddress = 'ws://62.75.143.7:8888';
