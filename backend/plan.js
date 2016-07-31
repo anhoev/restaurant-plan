@@ -121,6 +121,7 @@ class PlanBuilder {
                     while (overTime > 0 && subMenge.length > 0) {
                         const shift = subMenge.shift();
                         if (shift) {
+                            if (_.find(subMenge,{day: shift.day})) break;
                             const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
                             overTime = overTime - shift.maxOverTime >= 0 ? overTime - shift.maxOverTime : 0;
                             shift.overTime = _overTime;
@@ -137,7 +138,7 @@ class PlanBuilder {
                 // assign to days
 
                 const day = _.find(this.days, day => {
-                    return _.contains(day.shifts, shift);
+                    return _.includes(day.shifts, shift);
                 });
 
                 for (let _shift of day.shifts) {
@@ -151,6 +152,7 @@ class PlanBuilder {
     }
 
     calculate(date1, date2) {
+        const a = 5;
         if (!this.shiftList || this.shiftList.length === 0 || this.employeePlans.length === 0) return;
 
         const {shifts, days} = this.genShifts(date1, date2);

@@ -3,12 +3,27 @@ const JsonFn = require('json-fn');
 const _ = require('lodash');
 const path = require('path');
 const PlanBuilder = require('./plan');
-const q = require('q');
 const moment = require('moment-timezone');
-var deasync = require('deasync');
+const q = require('q');
+const deasync = require("deasync");
+
+function async(fn) {
+    function _async(fn, _this) {
+        let result = false, done = false;
+        q.spawn(function*() {
+            result = yield* fn.bind(_this)();
+            done = true;
+        })
+        deasync.loopWhile(()=>!done);
+        return result;
+    }
+
+    return function () {
+        return _async(fn, this);
+    }
+}
 
 module.exports = (cms) => {
-
     const {mongoose, utils:{makeSelect, makeMultiSelect, makeTypeSelect, makeStyles, makeCustomSelect}} = cms;
 
     const Company = cms.registerSchema({
@@ -267,19 +282,19 @@ module.exports = (cms) => {
         serverFn: {
             calculate: function*(planId) {
                 const plan = yield Plan.findOne({_id: planId});
-                const date = new Date(plan.month);
                 const _plans = [];
                 for (const item of plan.plan) {
+                    const date = new Date(plan.month);
                     const {chefs, waiters, company} = item;
-                    const date2 = moment(date).add(1, 'month').subtract(1, 'day').toDate();
+                    const date2 = moment(new Date(date)).add(1, 'month').subtract(1, 'day').toDate();
 
                     const planBuilder = new PlanBuilder(cms, company._id, 'waiter', waiters, date, _plans);
                     yield* planBuilder.init();
-                    item.planForWaiter = planBuilder.calculate(date, date2);
+                    item.planForWaiter = planBuilder.calculate(new Date(date), date2);
 
                     const _planBuilder = new PlanBuilder(cms, company._id, 'chef', chefs, date, _plans);
                     yield* _planBuilder.init();
-                    item.planForChef = _planBuilder.calculate(date, date2);
+                    item.planForChef = _planBuilder.calculate(new Date(date), date2);
 
                     _plans.push(item);
                 }
