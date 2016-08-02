@@ -15,4 +15,4 @@ cms.use(require('./organize'));
 
 cms.server('backend/en', '');
 
-cms.data.online.wsAddress = 'ws://62.75.143.7:8888';
+// cms.data.online.wsAddress = 'ws://62.75.143.7:8888';

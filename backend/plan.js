@@ -12,7 +12,13 @@ class PlanBuilder {
         this.position = position;
 
         this.employeePlans = employees.map(employee => new EmployeePlan(employee.toJSON(), anotherPlans));
-        this.employeePlans.sort((e1, e2) => e1.getMaxHour(company) - e2.getMaxHour(company));
+        this.employeePlans.sort((e1, e2) => {
+            if (e1.getFlexible(this.company) === e2.getFlexible(this.company)) {
+                return e1.getMaxHour(company) - e2.getMaxHour(company);
+            } else {
+                return (+e1.getFlexible(this.company)) - (+e2.getFlexible(this.company));
+            }
+        });
         this.date = date;
     }
 
@@ -121,7 +127,7 @@ class PlanBuilder {
                     while (overTime > 0 && subMenge.length > 0) {
                         const shift = subMenge.shift();
                         if (shift) {
-                            if (_.find(subMenge,{day: shift.day})) break;
+                            if (_.find(subMenge, {day: shift.day})) break;
                             const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
                             overTime = overTime - shift.maxOverTime >= 0 ? overTime - shift.maxOverTime : 0;
                             shift.overTime = _overTime;
@@ -190,7 +196,9 @@ class EmployeePlan {
                 const detailPlan = plan[position === 'chef' ? 'planForChef' : 'planForWaiter'];
                 if (detailPlan) {
                     const employeePlan = _.find(detailPlan.employeePlans, employeePlan => employeePlan.employee._id.toString() === employee._id.toString());
-                    if (employeePlan) this.anotherShifts = employeePlan.subMenge;
+                    if (employeePlan) {
+                        this.anotherShifts = employeePlan.subMenge;
+                    }
                 }
             }
 
