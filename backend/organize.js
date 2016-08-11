@@ -121,6 +121,10 @@ module.exports = (cms) => {
                 return active;
 
             });
+
+            schema.virtual('company').get(function () {
+                return _.filter(this.work, work => work.company);
+            });
         }
     });
     const Shift = cms.registerSchema({

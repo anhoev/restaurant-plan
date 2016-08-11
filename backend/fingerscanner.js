@@ -51,22 +51,16 @@ module.exports = (cms) => {
     //noinspection JSUnresolvedVariable
     cms.registerWrapper('Report', {
         formatterUrl: path.resolve(__dirname, 'report.html'),
-        mTemplate: ``,
-        fn: {
-            onInit: function () {
-                const model = this;
-                var employee = _.find(Types.Employee.list, {name: 'Anh'});
-                /*cms.execServerFn('Employee', employee, 'totalHour', employee._id).then(({data}) => {
-                 model.test = data;
-                 });*/
-            },
-            report: function () {
-                const model = this;
+        controller: function ($scope, cms) {
+            $scope.companyList = cms.types.Company.list;
+            $scope.data = {};
+            $scope.report = function () {
                 cms.execServerFnForWrapper('Report', 'totalHour', {
-                    from: model.from,
-                    to: model.to
+                    from: $scope.data.from,
+                    to: $scope.data.to,
+                    company: $scope.data.company
                 }).then(({data}) => {
-                    model.employees = JsonFn.clone(data, true);
+                    $scope.employees = JsonFn.clone(data, true);
                 });
             }
         },
@@ -115,7 +109,7 @@ module.exports = (cms) => {
                     return {name: employee.name, total, list: groupList, forgetLogOut};
                 }
 
-                const employees = yield cms.Types.Employee.Model.find({});
+                const employees = yield cms.Types.Employee.Model.find({'work.company': range.company});
 
                 const _result = [];
                 for (let employee of employees) {
