@@ -6,23 +6,35 @@ const moment = require('moment-timezone');
 const weekday = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 class PlanBuilder {
-    constructor(cms, company, position, employees, date, anotherPlans) {
+    constructor(cms, company, position, date, anotherPlans) {
         this.cms = cms;
         this.company = company;
         this.position = position;
+        this.date = date;
+        this.anotherPlans = anotherPlans;
+    }
 
-        this.employeePlans = employees.map(employee => new EmployeePlan(employee.toJSON(), anotherPlans));
+    *init() {
+        let query = this.position === 'chef' ? {
+            position: this.position, 'work.company': this.company.toString()
+        } : {
+            $or: [{
+                position: 'waiter', 'work.company': this.company.toString()
+            }, {
+                position: 'manager', 'work.company': this.company.toString()
+            }]
+        }
+        const employees = yield this.cms.getModel('Employee').find(query);
+
+        this.employeePlans = employees.map(employee => new EmployeePlan(employee.toJSON(), this.anotherPlans, this.date));
         this.employeePlans.sort((e1, e2) => {
             if (e1.getFlexible(this.company) === e2.getFlexible(this.company)) {
-                return e1.getMaxHour(company) - e2.getMaxHour(company);
+                return e1.getMaxHour(this.company) - e2.getMaxHour(this.company);
             } else {
                 return (+e1.getFlexible(this.company)) - (+e2.getFlexible(this.company));
             }
         });
-        this.date = date;
-    }
 
-    *init() {
         this.shiftList = yield this.cms.Types.Shift.Model.find({company: this.company, position: this.position});
     }
 
@@ -38,6 +50,7 @@ class PlanBuilder {
                     workingTime: this.cms.Types.Shift.fn.getWorkingTime.bind(shift)(),
                     weekDay: shift.weekDay,
                     maxOverTime: shift.maxOverTime,
+                    mark:shift.mark,
                     _id: shift._id
                 });
             }
@@ -188,7 +201,7 @@ class PlanBuilder {
 }
 
 class EmployeePlan {
-    constructor(employee, anotherPlans) {
+    constructor(employee, anotherPlans, date) {
         _.reduce(anotherPlans, (result, plan) => {
             const position = employee.position === 'chef' ? 'chef' : 'waiter';
             const found = _.find(plan[`${position}s`], {_id: employee._id});
@@ -204,6 +217,7 @@ class EmployeePlan {
 
         }, []);
         this.employee = employee;
+        this.date = date;
     }
 
     getFlexible(companyId) {
@@ -217,7 +231,14 @@ class EmployeePlan {
 
     getMaxHour(companyId) {
         const find = _.find(this.employee.work, work => work.company._id.toString() === companyId.toString());
-        return find ? find.maxHour : 0;
+        if (!find) return 0;
+        const _find = _.find(find.item, item => {
+            if (item.begin < this.date) {
+                if (!item.end || item.end > this.date) return true;
+            }
+            return false;
+        })
+        return _find ? _find.maxHour : 0;
     }
 
     toJSON() {

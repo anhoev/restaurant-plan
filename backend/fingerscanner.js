@@ -1,7 +1,7 @@
 'use strict';
 const path = require('path');
 const JsonFn = require("json-fn");
-const Q = require('q');
+const q = require('q');
 const moment = require('moment');
 module.exports = (cms) => {
 
@@ -10,7 +10,7 @@ module.exports = (cms) => {
     const CheckEvent = cms.registerSchema({
         time: {type: Date, default: Date.now},
         isCheckIn: {type: Boolean, default: true},
-        employee: {type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: true}
+        employee: {type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: {select: 'name'}}
     }, {
         name: 'CheckEvent',
         formatter: `
@@ -115,7 +115,7 @@ module.exports = (cms) => {
                     return {name: employee.name, total, list: groupList, forgetLogOut};
                 }
 
-                const employees = yield Employee.find({});
+                const employees = yield cms.Types.Employee.Model.find({});
 
                 const _result = [];
                 for (let employee of employees) {
