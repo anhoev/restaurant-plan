@@ -53,7 +53,11 @@ module.exports = (cms) => {
         formatterUrl: path.resolve(__dirname, 'report.html'),
         controller: function ($scope, cms) {
             $scope.companyList = cms.types.Company.list;
-            $scope.data = {};
+            const now = new Date();
+            $scope.data = {
+                from: new Date(now.getFullYear(), 0, 1),
+                to: new Date(now.getFullYear(), 11, 31)
+            };
             $scope.report = function () {
                 cms.execServerFnForWrapper('Report', 'totalHour', {
                     from: $scope.data.from,

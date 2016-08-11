@@ -40,7 +40,7 @@
              ng-click="data.employee = employee;"
              class="panel panel-default" style="margin-bottom: 10px;cursor: pointer">
             <div class="panel-body" ng-class="{'bg-info': data.employee === employee}">
-                <span class="text-primary">{{employee.name}} : {{employee.total}} hours, forget logout in day:</span>
+                <span class="text-primary">{{employee.name}} : <span style="font-weight: bold;">{{employee.total}} hours</span>, forget logout in day:</span>
                 <span class="text-info" ng-repeat="forget in employee.forgetLogOut">{{forget.time | date:'dd-MM'}},</span>
             </div>
         </div>

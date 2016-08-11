@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cms = require('cmsmon');
 cms.mongoose = mongoose;
 cms.resolvePath = (p) => `backend/${p}`;
-cms.data.security = false;
+cms.data.security = true;
 cms.listen(8888);
 mongoose.connect('mongodb://localhost/mobile');
 cms.data.webtype = cms.Enum.WebType.APPLICATION;
