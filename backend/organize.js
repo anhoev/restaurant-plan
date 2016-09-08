@@ -38,19 +38,6 @@ const Position = cms.registerSchema({
     alwaysLoad: true
 });
 
-const BeginHour = cms.registerSchema({
-    hour: {type: Number, label: 'Stunde'},
-    minute: {type: Number, label: 'Minute', default: 0}
-}, {
-    name: 'BeginHour',
-    label: 'BeginStunde',
-    formatter: `<h4>{{model.time}}</h4>`,
-    title: 'name',
-    isViewElement: false,
-    alwaysLoad: true
-});
-
-
 const EmployeeRecord = cms.registerSchema({
     employee: {
         type: mongoose.Schema.Types.ObjectId,
