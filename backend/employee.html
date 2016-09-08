@@ -1,0 +1,36 @@
+<div class="panel panel-default panel-xs shadow" style="margin-bottom: 10px;">
+    <div class="panel-body" style="padding: 5px;min-height: 90px" ng-class="{'bg-info': false}">
+        <span class="text-primary" style="font-weight: bold" ng-click="formService.edit(record._id, 'EmployeeRecord')">
+            {{model.name}} <span ng-if="model.Id" class="text-muted">({{model.Id}})</span>
+        </span>
+
+        <span class="label label-success pull-right">{{model.position}}</span>
+        <span class="label label-danger pull-right" style="margin-right: 3px;" ng-init="isWorking = fn.isWorking()">{{isWorking}}</span>
+        <span class="label label-success pull-right" ng-if="model.active">aktive</span>
+
+        <hr>
+        <div ng-repeat="work in model.work" ng-init="profile = fn.findDefaultProfile(work)">
+            <span class="" style="margin-right: 5px;background-color: #E1ECF4;color: #8835b7;font-size: small;font-weight: 500;padding: 2px;">
+                {{work.company.name}}
+                <span ng-if="profile.workType">({{profile.workType.charAt(0)}})</span>
+                &nbsp;&nbsp;
+                <span style="color: darkgoldenrod">* {{profile.realWorkrate}} €</span>
+                &nbsp;&nbsp;
+                {{profile.workrate}} €
+                &nbsp;&nbsp;
+                <span ng-if="!profile.equivalentHour">
+                    {{profile.maxHour}} h
+                </span>
+                &nbsp;&nbsp;
+                <span ng-if="profile.equivalentHour">
+                    {{profile.maxHour}}/{{profile.equivalentHour}} h
+                </span>
+                <span ng-if="profile.bonus">
+                    <i class="fa fa-gift" aria-hidden="true"></i>
+                    {{profile.bonus}}
+                </span>
+            </span>
+        </div>
+
+    </div>
+</div>

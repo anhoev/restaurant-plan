@@ -1,0 +1,99 @@
+<div class="row">
+    <div class="form-group">
+        <div class="col-sm-3">
+            <label>Monat auswählen:</label>
+            <input type="month" ng-model="data.month" class="form-control">
+        </div>
+        <div class="col-sm-3" ng-show="!showGenerateBtn">
+            <label>Firma auswählen:</label>
+            <ui-select data-ng-model="data.company" on-select="onSelect()" theme="bootstrap">
+                <ui-select-match placeholder="Choose company">{{$select.selected.name}}</ui-select-match>
+                <ui-select-choices
+                        data-repeat="item._id as item in companyList | filterBy: ['name']: $select.search">
+                    <div ng-bind-html="item.name | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+
+        <div class="col-sm-3" ng-show="!showGenerateBtn">
+            <div class="form-group">
+                <label>Stelle auswählen:</label>
+                <ui-select data-ng-model="data.position" on-select="onSelect()" theme="bootstrap">
+                    <ui-select-match placeholder="Choose position">{{$select.selected}}</ui-select-match>
+
+                    <ui-select-choices data-repeat="item in positions.concat(['Alle'])">
+                        <div ng-bind-html="item"></div>
+                    </ui-select-choices>
+                </ui-select>
+            </div>
+        </div>
+        <div class="col-sm-3" ng-show="showGenerateBtn">
+            <label>&nbsp;&nbsp;</label>
+            <button class="btn btn-default form-control" ng-click="serverFn.generate(data.month);">Generiert</button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div ng-repeat="record in records"
+         ng-init="employeeInfo = getInfo(record.employee)"
+         class="col-xs-4">
+        <div class="panel panel-default panel-xs shadow" style="margin-bottom: 10px;">
+            <div class="panel-body" style="padding: 5px;min-height: 220px" ng-class="{'bg-info': false}">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <span class="text-primary" style="font-weight: bold;"
+                              ng-click="formService.edit(record._id, 'EmployeeRecord')">{{record.employee.name}}</span>
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="pull-right">
+                            <div class="label label-info" style="margin-right: 5px;">* {{record.totalHour}} h</div>
+                            <div class="label label-info" style="margin-right: 5px;">* {{record.realWorkrate}} €</div>
+
+                            <div class="label label-warning" style="margin-right: 5px;" ng-if="!record.equivalentHour">
+                                {{record.maxHour}} h
+                            </div>
+                            <div class="label label-warning" style="margin-right: 5px;" ng-if="record.equivalentHour">
+                                {{record.maxHour}}/{{record.equivalentHour}} h
+                            </div>
+                            <div class="label label-warning" style="margin-right: 5px;">{{record.workrate}} €</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="label label-default pull-right" style="margin-right: 5px;background-color: cadetblue">
+                    {{record.employee.position}}
+                </div>
+
+                <div class="label label-primary pull-right" style="margin-right: 5px;background-color:cornflowerblue"
+                     ng-if="record.workType">
+                    {{record.workType}}
+                </div>
+
+                <span class="panel-text" ng-if="record.netIncome">Nettolohn:
+                    <span class="text-warning"
+                          ng-class="{'text-danger-2':record.paid=== 'Nicht'}">{{record.netIncome}} €</span></span><br>
+                <span class="panel-text" ng-if="record.restHour">Rest Stunden: <span class="text-info">{{record.restHour}} h</span></span><br>
+                <span class="panel-text" ng-if="record.remaining">Rest: <span class="text-info"
+                                                                              ng-class="{'text-danger-2':record.paid!== 'Alle'}"
+                                                                              style="font-weight: bold">* {{record.remaining}} €</span></span><br>
+                <span class="panel-text" ng-if="record.bonus">Bonus: {{record.bonus}}</span><br>
+                <span class="panel-text" ng-if="record.note">Note: {{record.note}}</span><br>
+
+                <div>
+                    <hr>
+                    <button class="btn btn-white btn-xs text-primary" ng-click="chooseProfile(record)">Profile
+                        auswählen
+                    </button>
+                    <button class="btn btn-white btn-xs text-primary"
+                            ng-click="formService.edit(record.employee._id, 'Employee',refresh)">Edit Mitarbeiter
+                    </button>
+                    <button class="btn btn-white btn-xs text-primary"
+                            ng-click="formService.edit(record._id, 'EmployeeRecord',refresh)">Edit Eintrag
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

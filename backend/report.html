@@ -49,14 +49,13 @@
         <div class="panel panel-default" ng-if="data.employee">
             <div class="panel-body">
                 <div>
-                    <p class="text-primary">
+                    <h4 class="text-primary">
                         {{data.employee.name}} :
-                    </p>
+                    </h4>
                     <div ng-repeat="day in data.employee.list">
                         <div ng-repeat="group in day">
-                            Date: {{group[0].time | date:'dd-MM'}} , checkin : {{group[0].time | date:'HH:mm'}},
-                            checkout :
-                            {{group[1].time | date:'HH:mm'}}
+                            Date: {{group[0].time | date:'dd-MM'}} , {{group[0].confirmTime | date:'HH:mm'}} - {{group[1].confirmTime | date:'HH:mm'}}
+                            <span ng-show="group[0].special">&nbsp;(Ausnahme)</span>
                         </div>
                     </div>
                 </div>
