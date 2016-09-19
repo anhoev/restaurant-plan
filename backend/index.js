@@ -12,6 +12,7 @@ cms.data.webtype = cms.Enum.WebType.APPLICATION;
 cms.use(require('cmsmon/mobile'));
 require('./fingerscanner');
 require('./organize');
+require('./menu');
 
 cms.server('backend/en', '');
 cms.data.online.autoOpenAdmin = true;

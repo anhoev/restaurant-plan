@@ -99,7 +99,8 @@ cms.registerWrapper('Report', {
 
         $scope.data = {
             from: new Date(now.getFullYear(), 0, 1),
-            to: new Date(now.getFullYear(), 11, 31)
+            to: new Date(now.getFullYear(), 11, 31),
+            month: now
         };
 
         $scope.report = function () {
@@ -111,6 +112,11 @@ cms.registerWrapper('Report', {
                 $scope.employees = JsonFn.clone(data, true);
             });
         }
+
+        $scope.$watch('data.month',(month) => {
+            $scope.data.from = moment(month).clone().subtract(1, 'months').date(20).startOf('day').toDate();
+            $scope.data.to = moment(month).clone().date(19).endOf('day').toDate();
+        })
     },
     serverFn: {
         totalHourForEmployee,
