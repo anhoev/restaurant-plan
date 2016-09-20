@@ -275,7 +275,7 @@ class EmployeePlan {
                     endHour: shift.endHour,
                     mark: shift.mark,
                     overTime: shift.overTime,
-                    maxOverTime:shift.maxOverTime
+                    maxOverTime: shift.maxOverTime
                 }
             });
         }
@@ -327,13 +327,6 @@ function getDaysInMonth(month) {
     return days;
 }
 
-function isConflict(shift1, shift2) {
-    if (shift1.day === shift2.day) {
-        if (shift1.endHour > shift2.beginHour) return true;
-    }
-    return false;
-}
-
 function softByBeginHour(shifts) {
     return shifts.sort((shift1, shift2) => {
         if (shift1.month < shift2.month) return -1;
@@ -348,8 +341,10 @@ function isConflictWithList(shifts, shift) {
     if (!shifts || shifts.length === 0) return false;
     let conflict = false;
     shifts.forEach(s => {
-        if (s.beginHour <= shift.beginHour && isConflict(s, shift)) conflict = true;
-        if (s.beginHour >= shift.beginHour && isConflict(shift, s)) conflict = true;
+        if (s.day !== shift.day) return;
+        if (s.beginHour === shift.beginHour) conflict = true;
+        if (s.beginHour < shift.beginHour && s.endHour > shift.beginHour) conflict = true;
+        if (shift.beginHour < s.beginHour && shift.endHour > s.beginHour) conflict = true;
     });
     return conflict;
 }
