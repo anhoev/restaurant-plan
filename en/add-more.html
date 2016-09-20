@@ -1,0 +1,37 @@
+<div class="" style="padding:15px">
+    <h5>Hinzufügen: </h5>
+
+    <button class="btn cms-btn btn-success btn-outline btn-xs" style="margin-right: 10px"
+            ng-repeat="company in companyList" ng-click="data.company = company;">{{ company.name }}
+    </button>
+
+    <hr>
+
+    <div class="row">
+        <div class="col-sm-12">
+            <button ng-repeat="employee in employees" class="btn cms-btn btn-default btn-outline btn-xs" style="margin-right: 10px;margin-bottom: 10px;"
+                    ng-click="result.push(employee);_.remove(employeeList,employee);refresh();">
+                {{employee.name}}
+            </button>
+        </div>
+    </div>
+
+
+
+    <hr>
+
+    <div class="row">
+        <div class="col-sm-12">
+            <button ng-repeat="employee in result" class="btn cms-btn btn-default btn-outline btn-xs"
+                    style="margin-right: 10px;margin-bottom: 10px;" ng-click="_.remove(result,employee);employeeList.push(employee);refresh();">
+                {{employee.name}}
+            </button>
+        </div>
+    </div>
+
+    <br>
+    <br>
+
+    <button ng-click="instance.close(result)" class="btn btn-primary">Choose</button>
+    <button ng-click="cancel()" class="btn btn-primary">Cancel</button>
+</div>

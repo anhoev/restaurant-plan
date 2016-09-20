@@ -1,0 +1,66 @@
+<div class="cms-wrapper animated fadeInRight cms-sidebar cms">
+    <button type="button" class="btn btn-sm btn-white cms-close-position"
+            ng-click="cancel()">
+        <i class="fa fa-times"></i>
+    </button>
+
+    <div>
+        <div ng-repeat="week in weeks" style="page-break-after:always;page-break-inside: avoid;">
+            <h4>Woche {{week._id.week}}</h4>
+            <table border="1" class="table" style="max-width: 1300px;">
+                <thead>
+                <tr>
+                    <th ng-repeat="day in week.days"
+                        style="padding-left: 20px;padding-right: 20px;vertical-align: top;" class="text-primary"
+                        ng-init="_index = $index">
+                        <p>{{weekday[day._id.dayOfWeek - 1]}}</p>
+                        {{day._id.day}}/{{day._id.month}}
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr style="padding-top: 10px;padding-bottom: 10px;">
+                    <td ng-repeat="day in week.days"
+                        style="padding-left: 20px;padding-right: 20px;vertical-align: top">
+
+                        <div ng-repeat="plan in day.plans" ng-init="shift = plan.shift; employee = plan.employee">
+                            <p style="margin-bottom: 0px;cursor: pointer;"
+                               ng-class="{'text-danger': !employee || !employee.name}"
+                               ng-click="formService.edit(plan._id, 'PlanItem')">{{shift.beginHour}} - {{shift.endHour > 24?
+                                shift.endHour -24: shift.endHour}}
+                                <span ng-show="shift.mark !== 'waiter & bar'">&nbsp;({{shift.position}})</span>
+                                <span ng-show="shift.mark == 'waiter & bar'" class="text-info">({{shift.mark}})</span>
+                            </p>
+                            <div ng-if="employee !== null">
+                                <p style="cursor: pointer" ng-click="editEmployee(employee._id)">
+                                    {{employee.name}}</p>
+                            </div>
+                        </div>
+
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div ng-if="emptyShifts">
+        <h4 class="text-danger-2">leere Schichte:</h4>
+        <p ng-repeat="planItem in emptyShifts.plans" ng-init="shift = planItem.shift">
+            Date: {{planItem.date | date:'dd.MM'}} ,weekDay: {{weekday[planItem.date.getDay()]}}, beginHour: {{shift.beginHour}}, endHour:
+            {{shift.endHour > 24? shift.endHour -24: shift.endHour}}
+        </p>
+    </div>
+
+    <div ng-repeat="employeePlan in employees" ng-init="planItems = employeePlan.plans;records = employeePlan.records">
+        <h4 ng-click="editEmployee(employeePlan._id.employee._id)" style="cursor: pointer">Name: {{employeePlan._id.employee.name}}</h4>
+        <h4>Gesamt: <span ng-repeat="record in records">{{ record.company.name }} : <span ng-class="{'text-danger-2': record.sum !== record.maxHour && !record.flexible}">{{record.sum}}</span>/{{record.maxHour}}&nbsp;&nbsp;&nbsp;</span></h4>
+        <div ng-repeat="planItem in planItems" ng-init="shift = planItem.shift" ng-click="formService.edit(planItem._id, 'PlanItem')">
+            Tag: {{planItem.date | date:'dd.MM'}} ,Wochentag: {{weekday[planItem.date.getDay()]}},
+            Arbeiten bei: {{ planItem.company.name }}, Stelle: {{ shift.position }},
+            Arbeitszeit: {{shift.beginHour}}-{{shift.endHour > 24? shift.endHour -24: shift.endHour}}
+            <span ng-if="shift.overTime">, overtime: {{shift.overTime}}</span>
+        </div>
+    </div>
+
+</div>

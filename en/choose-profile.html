@@ -1,0 +1,15 @@
+<div class="container" style="padding-bottom: 15px; padding-top: 15px;">
+    <h5>Profile auswählen: </h5>
+    <div class="radio" ng-repeat="profile in profiles">
+        <label><input type="radio" name="optradio" ng-model="data.profile" ng-value="profile">
+            <div class="label label-info" style="margin-right: 5px;">* {{profile.realWorkrate}} €</div>
+            <div class="label label-primary" style="margin-right: 5px;">* {{profile.totalHour}} h</div>
+            <div class="label label-success" style="margin-right: 5px;">{{profile.workrate}} €</div>
+            <div class="label label-warning" style="margin-right: 5px;" ng-if="!profile.equivalentHour">{{profile.maxHour}} h</div>
+            <div class="label label-info" style="margin-right: 5px;" ng-if="profile.equivalentHour">{{profile.maxHour}}/{{profile.equivalentHour}} h</div>
+        </label>
+    </div>
+
+    <button ng-click="choose(data.profile)" class="btn btn-primary">Choose</button>
+    <button ng-click="cancel()" class="btn btn-primary">Cancel</button>
+</div>
