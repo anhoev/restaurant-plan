@@ -2,5 +2,6 @@ archive
 node_modules
 .idea
 *.iml
+build
 backend/en
 .DS_Store
