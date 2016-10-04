@@ -215,7 +215,7 @@ const Employee = cms.registerSchema({
             if (result) return result.status;
         }
     },
-    autopopulate: true,
+    autopopulate: false,
     alwaysLoad: true,
     tabs: [
         {title: 'basic'},

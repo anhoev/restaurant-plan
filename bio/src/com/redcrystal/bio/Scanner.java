@@ -21,6 +21,7 @@ public class Scanner {
     static long[] hMatcherContainer = new long[1];
 
     public static Callback cb;
+    private boolean _autoscan = false;
 
     public void setCb(Callback cb) {
         Scanner.cb = cb;
@@ -45,6 +46,7 @@ public class Scanner {
             //set class
 
             bio.UFS_SetClassName("com.redcrystal.bio.Scanner");
+
         }
 
         return result;
@@ -58,25 +60,19 @@ public class Scanner {
         return null;
     }
 
-    class ScannerResult {
-        public ScannerResult(String template, String image, int size, int quality) {
-            this.template = template;
-            this.image = image;
-            this.size = size;
-            this.quality = quality;
-        }
-
-        public String template;
-        public String image;
-        public int size;
-        public int quality;
-    }
-
     public void captureCallback(int bFingerOn, byte[] pImage, int nWidth, int nHeight, int nResolution) {
         String image64 = convertToJpg(nWidth, nHeight, pImage);
 
+        byte[] bTemplate = new byte[MAX_TEMPLATE_SIZE];
+        int[] refTemplateSize = new int[1];
+        int[] refTemplateQuality = new int[1];
+
+        bio.UFS_ExtractEx(getHandleScanner()[0], MAX_TEMPLATE_SIZE, bTemplate, refTemplateSize, refTemplateQuality);
+
+        ScannerResult scannerResult = new ScannerResult(Base64.getEncoder().encodeToString(bTemplate), image64, refTemplateSize[0], refTemplateQuality[0]);
+
         if (Scanner.cb != null) {
-            Scanner.cb.action(image64);
+            Scanner.cb.action(scannerResult);
         }
     }
 
@@ -86,16 +82,24 @@ public class Scanner {
 
         checkConnected(handleNr);
 
-        bio.UFS_ClearCaptureImageBuffer(handleNr);
+        if (_autoscan) {
+            bio.UFS_AbortCapturing(handleNr);
 
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+
+        bio.UFS_ClearCaptureImageBuffer(handleNr);
         int nRes = bio.UFS_CaptureSingleImage(handleNr);
 
         if (nRes != 0) return null;
 
         byte[] bTemplate = new byte[MAX_TEMPLATE_SIZE];
-
         int[] refTemplateSize = new int[1];
-
         int[] refTemplateQuality = new int[1];
 
         try {
@@ -124,6 +128,16 @@ public class Scanner {
 
             bio.UFS_GetFPQuality(handleNr, pImageData, nWidth[0], nHeight[0], pnFPQuality);
 
+            if (_autoscan) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+
+                autoScan();
+            }
+
             return new ScannerResult(template, image64, refTemplateSize[0], pnFPQuality[0]);
 
         } catch (Exception ex) {
@@ -149,6 +163,8 @@ public class Scanner {
 
     public void autoScan() {
 
+        this._autoscan = true;
+
         System.out.println("auto scan ...");
 
         long handleNr = getHandleScanner()[0];
@@ -164,9 +180,19 @@ public class Scanner {
     private void checkConnected(long handleNr) {
         int[] pbSensorOn = new int[1];
 
-        bio.UFS_IsSensorOn(handleNr, pbSensorOn );
+        bio.UFS_IsSensorOn(handleNr, pbSensorOn);
 
         if (pbSensorOn[0] == 0) init();
+    }
+
+    public boolean identifyInit(String template64, int templateSize) {
+        return bio.UFM_IdentifyInit(hMatcherContainer[0], Base64.getDecoder().decode(template64), templateSize) == 0;
+    }
+
+    public boolean identifyNext(String template64, int templateSize) {
+        int[] refIdentifyRes = new int[1];
+        int res = bio.UFM_IdentifyNext(hMatcherContainer[0], Base64.getDecoder().decode(template64), templateSize, refIdentifyRes);
+        return res == 0 && refIdentifyRes[0] == 1;
     }
 
     public static void main(String[] args) {

@@ -148,7 +148,6 @@ function* totalHourForEmployee(employee, range) {
 
     const dayList = _.reduce(list, (result, element) => {
         const last = _.last(result);
-npm 
         if (last && dayCompare(last[0].confirmTime, element.confirmTime)) {
             last.push(element);
         } else {
