@@ -35,13 +35,13 @@ class PlanBuilder {
                 $lte: cms.utils.endOfMonth(this.month)
             }
         }).lean();
-        records = _.filter(records, ({employee:{position}}) => {
+        planItems = _.filter(planItems, ({employee:{position}}) => {
             if (_position === 'chef') return position === 'chef';
             if (_position === 'bar') return position === 'bar';
             if (_position === 'waiter') return position === 'waiter' || position === 'manager';
         });
 
-        let employeePlans = records.map(record => new EmployeePlan(record));
+        let employeePlans = planItems.map(record => new EmployeePlan(record));
 
         for (const plan of employeePlans) {
             yield* plan.init();

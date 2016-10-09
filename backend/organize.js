@@ -4,6 +4,7 @@ const _ = require('lodash');
 const path = require('path');
 const PlanBuilder = require('./plan2');
 const moment = require('moment-timezone');
+require('moment-range');
 moment.tz.setDefault("Europe/Berlin");
 const q = require('q');
 const deasync = require("deasync");
@@ -12,31 +13,35 @@ const cms = require('cmsmon').instance;
 
 const {mongoose, utils:{makeSelect, makeMultiSelect, makeTypeSelect, makeStyles, makeCustomSelect}} = cms;
 
-cms.utils.beginOfMonth = month => moment(month).clone().subtract(1, 'months').date(20).startOf('day').toDate();
-cms.utils.endOfMonth = month => moment(month).clone().date(19).endOf('day').toDate();
+cms.utils.beginOfMonth = month => moment(month).clone().startOf('month').toDate();
+cms.utils.endOfMonth = month => moment(month).clone().endOf('month').toDate();
 
 const Company = cms.registerSchema({
-    name: {type: String, default: 'Name'}
-}, {
-    name: 'Company',
-    formatter: `
+        name: {type: String},
+        group: {type: String, label: 'Typ', form: makeSelect('Restaurant', 'Cantin')},
+        main: {type: Boolean, label: 'haupt Restaurant'}
+    },
+    {
+        name: 'Company',
+        formatter: `
             <h4>{{model.name}}</h4>
         `,
-    title: 'name',
-    isViewElement: false,
-    alwaysLoad: true
-});
+        title: 'name',
+        isViewElement: false,
+        alwaysLoad: true
+    });
 
 const Position = cms.registerSchema({
-    name: {type: String},
-    label: {type: String}
-}, {
-    name: 'Position',
-    formatter: `<h4>{{model.name}}</h4>`,
-    title: 'name',
-    isViewElement: false,
-    alwaysLoad: true
-});
+        name: {type: String},
+        label: {type: String}
+    },
+    {
+        name: 'Position',
+        formatter: `<h4>{{model.name}}</h4>`,
+        title: 'name',
+        isViewElement: false,
+        alwaysLoad: true
+    });
 
 const EmployeeRecord = cms.registerSchema({
     employee: {
@@ -130,135 +135,224 @@ const EmployeeRecord = cms.registerSchema({
 });
 
 const Employee = cms.registerSchema({
-    name: {type: String, label: 'Name'},
-    Id: String,
+        name: {type: String, label: 'Name'},
+        Id: String,
+        position: {
+            type: String,
+            form: {type: 'select-ref-static', templateOptions: {Type: 'Position', labelProp: 'label'}},
+            label: 'Stelle'
+        },
+        flexible: {type: Boolean, default: false, label: 'Flexibel'},
+        maxHour: {type: Number, label: 'Soll'},
+        work: {
+            type: [{
+                company: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Company',
+                    autopopulate: {select: '_id name'},
+                    label: 'Firma'
+                },
+                status: {
+                    type: String, label: 'Stand', default: 'working', form: {
+                        type: 'select', templateOptions: {
+                            options: [
+                                {name: 'Arbeiten', value: 'working'},
+                                {name: 'Urlaub', value: 'vacation'},
+                                {name: 'Gekündigt', value: 'quit'}
+                            ]
+                        }
+                    }
+                },
+                shift: {
+                    type: [{
+                        weekDay: {
+                            type: [Number], form: {
+                                type: 'multi-select',
+                                templateOptions: {
+                                    options: [
+                                        {name: 'So', value: 0},
+                                        {name: 'Mo', value: 1},
+                                        {name: 'Di', value: 2},
+                                        {name: 'Mi', value: 3},
+                                        {name: 'Do', value: 4},
+                                        {name: 'Fr', value: 5},
+                                        {name: 'Sa', value: 6},
+                                    ]
+                                },
+                                controller: function ($scope) {
+                                    if (!$scope.model[$scope.options.key])
+                                        $scope.model[$scope.options.key] = [0, 1, 2, 3, 4, 5, 6];
+                                }
+                            },
+                            label: 'Wochentag'
+                        },
+                        position: {
+                            type: String,
+                            form: {type: 'select-ref-static', templateOptions: {Type: 'Position', labelProp: 'label'}},
+                            label: 'Stelle'
+                        },
+                        begin: {type: Number, label: 'Begin'},
+                        end: {type: Number, label: 'Ende'},
+                    }],
+                    form: {
+                        type: 'tableSection',
+                        templateOptions: {
+                            class: 'col-sm-12',
+                            widths: '55 15 15 15'
+                        },
+                    },
+                    label: 'Schicht'
+                },
+                note: {type: String, label: 'Note'},
+            }], label: 'Arbeit'
+        },
+        different: {
+            type: [{
+                month: {
+                    type: Date,
+                    form: {type: 'input', templateOptions: {type: 'month', class: 'col-sm-12'}},
+                    label: 'Monat'
+                },
+                maxHour: {type: Number, label: 'Soll'},
+                quantity: {
+                    type: Number,
+                    label: 'Anzahl'
+                }
+            }],
+            form: {
+                type: 'tableSection',
+                templateOptions: {
+                    class: 'col-sm-12',
+                    widths: '40 30 30'
+                },
+            },
+            label: 'Differenz'
+        }
+    },
+    {
+        name: 'Employee',
+        label: 'Mitarbeiter',
+        formatterUrl: 'backend/employee.html',
+        title: 'name',
+        isViewElement: false,
+        fn: {
+            findDefaultProfile: function (work) {
+                return _.find(work.item, {default: true});
+            },
+            isWorking: function () {
+                var result = _.find(this.work, work => work.status !== 'working');
+                if (result) return result.status;
+            }
+        },
+        controller: function ($scope) {
+            $scope.differents = _.drop($scope.model.different, $scope.model.different.length - 2);
+            $scope.differents = $scope.differents.map(different => ({
+                month: moment(different.month).month() + 1,
+                maxHour: different.maxHour,
+                quantity: different.quantity
+            }))
+        },
+        autopopulate: true,
+        alwaysLoad: true,
+        tabs: [
+            {title: 'basic'},
+            {title: 'different', fields: ['different']}
+        ],
+        initSchema: function (schema) {
+            schema.virtual('active').get(function () {
+                let active = false, done = false, events;
+                cms.Types.CheckEvent.Model.find({
+                    employee: this._id,
+                    time: {
+                        $gte: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(4, 'hour').toDate(),
+                        $lt: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
+                    }
+                }).exec(function (err, result) {
+                    done = true;
+                    events = result;
+                });
+
+                deasync.loopWhile(()=>!done);
+
+                const checkIns = _.filter(events, ({isCheckIn}) => isCheckIn);
+                const checkOuts = _.filter(events, ({isCheckIn}) => !isCheckIn);
+                if (checkIns.length === checkOuts.length) active = false;
+                if (checkIns.length > checkOuts.length) active = true;
+
+                return active;
+
+            });
+
+            schema.virtual('company').get(function () {
+                return _.map(this.work, work => work.company);
+            });
+        },
+        info: {
+            elementClass: 'col-sm-6',
+            editorIcon: {
+                top: '49px',
+                right: '-14px'
+            }
+        }
+    });
+
+const ShiftCondition = cms.registerSchema({
+    company: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company',
+        autopopulate: {select: '_id name'},
+        label: 'Firma',
+        form: {
+            controller: function ($scope, cms) {
+                if (!$scope.model[$scope.options.key]) {
+                    const company = _.find(cms.types.Company.list, {main: true});
+                    $scope.model[$scope.options.key] = company;
+                }
+            }
+        },
+    },
     position: {
         type: String,
         form: {type: 'select-ref-static', templateOptions: {Type: 'Position', labelProp: 'label'}},
         label: 'Stelle'
     },
-    work: {
-        type: [{
-            company: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Company',
-                autopopulate: {select: '_id name'},
-                label: 'Firma'
+    weekDay: {
+        type: [Number], form: {
+            type: 'multi-select',
+            templateOptions: {
+                options: [
+                    {name: 'So', value: 0},
+                    {name: 'Mo', value: 1},
+                    {name: 'Di', value: 2},
+                    {name: 'Mi', value: 3},
+                    {name: 'Do', value: 4},
+                    {name: 'Fr', value: 5},
+                    {name: 'Sa', value: 6},
+                ]
             },
-            status: {
-                type: String, label: 'Stand', default: 'working', form: {
-                    type: 'select', templateOptions: {
-                        options: [
-                            {name: 'Arbeiten', value: 'working'},
-                            {name: 'Urlaub', value: 'vacation'},
-                            {name: 'Gekündigt', value: 'quit'}
-                        ]
-                    }
-                }
-            },
-            item: {
-                type: [{
-                    default: {type: Boolean, label: 'Default'},
-                    workType: {
-                        type: String,
-                        label: 'Arbeitsart',
-                        form: {
-                            type: 'select',
-                            templateOptions: {
-                                options: [{name: 'Vollzeit', value: 'Vollzeit'}, {
-                                    name: 'Teilzeit',
-                                    value: 'Teilzeit'
-                                }, {name: 'MiniJob', value: 'MiniJob'}]
-                            }
-                        }
-                    },
-                    flexible: {type: Boolean, default: false, label: 'Flexibel'},
-                    maxHour: {type: Number, label: 'max Stunden'},
-                    equivalentHour: {type: Number, label: 'Äquivalent Stunden'},
-                    //fixSalary: {type: Number, label: 'Monatslohn'},
-                    workrate: {type: Number, label: 'Lohn (Steuer)'},
-                    netIncome: {type: Number, label: 'netto Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
-                    realWorkrate: {type: Number, label: 'echte Lohn'},
-                    bonus: {type: Number, label: 'Bonus'},
-                    manualTotalHour: {
-                        type: Number,
-                        label: 'Gesamte Stunden',
-                        form: {templateOptions: {tooltip: 'bei Wert 0 wird automatisch von Fingerscanner sammeln'}}
-                    },
-                }],
-                form: {
-                    type: 'tableSection',
-                    templateOptions: {class: 'col-sm-12'}
-                },
-                label: 'Profil'
-            },
-            note: {type: String, label: 'Note'},
-        }], label: 'Arbeit'
-    },
-    image: {type: String, form: {type: 'image'}, label: 'Bilder'},
-    fingerTemplate: [{
-        template: String,
-        size: Number
-    }]
-}, {
-    name: 'Employee',
-    label: 'Mitarbeiter',
-    formatterUrl: 'backend/employee.html',
-    title: 'name',
-    isViewElement: false,
-    fn: {
-        findDefaultProfile: function (work) {
-            return _.find(work.item, {default: true});
+            controller: function ($scope) {
+                if (!$scope.model[$scope.options.key])
+                    $scope.model[$scope.options.key] = [0, 1, 2, 3, 4, 5, 6];
+            }
         },
-        isWorking: function () {
-            var result = _.find(this.work, work => work.status !== 'working');
-            if (result) return result.status;
-        }
+        label: 'Wochentag'
     },
-    autopopulate: true,
+    begin: {type: Number, label: 'Begin'},
+    end: {type: Number, label: 'Ende'},
+    min: {type: Number, label: 'Min'},
+    max: {type: Number, label: 'Max'}
+}, {
+    name: 'ShiftCondition',
+    formatter: `
+            <h4>{{model.name}}</h4>
+        `,
+    title: 'company',
+    isViewElement: false,
     alwaysLoad: true,
-    tabs: [
-        {title: 'basic'},
-
-        {title: 'finger', fields: ['fingerTemplate']}
-    ],
-    initSchema: function (schema) {
-        schema.virtual('active').get(function () {
-            let active = false, done = false, events;
-            cms.Types.CheckEvent.Model.find({
-                employee: this._id,
-                time: {
-                    $gte: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(4, 'hour').toDate(),
-                    $lt: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
-                }
-            }).exec(function (err, result) {
-                done = true;
-                events = result;
-            });
-
-            deasync.loopWhile(()=>!done);
-
-            const checkIns = _.filter(events, ({isCheckIn}) => isCheckIn);
-            const checkOuts = _.filter(events, ({isCheckIn}) => !isCheckIn);
-            if (checkIns.length === checkOuts.length) active = false;
-            if (checkIns.length > checkOuts.length) active = true;
-
-            return active;
-
-        });
-
-        schema.virtual('company').get(function () {
-            return _.map(this.work, work => work.company);
-        });
-    },
-    info: {
-        elementClass: 'col-sm-4',
-        editorIcon: {
-            top: '49px',
-            right: '-14px'
-        }
-    }
+    autopopulate: true,
+    label: 'Schichtsbedingung'
 });
+
 const Shift = cms.registerSchema({
     weekDay: {
         type: String,
@@ -318,38 +412,129 @@ const employeeConfig = {
 };
 
 const PlanItem = cms.registerSchema({
-    date: {type: Date, form: {type: 'input', templateOptions: {type: 'date'}}},
-    company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: {select: '_id name'}},
-    shift: {
-        position: {
-            type: String,
-            form: {type: 'select-ref-static', templateOptions: {Type: 'Position'}},
-            label: 'Stelle'
-        },
-        beginHour: Number,
-        endHour: Number,
-        mark: {
-            type: String,
-            form: _.assign(makeSelect('', 'waiter', 'bar', 'waiter & bar'), {hideExpression: 'model.position !== "waiter"&& model.position !== "manager"'})
-        },
-        overTime: {type: Number},
-        maxOverTime: {type: Number}
-    },
+        date: {type: Date, form: {type: 'input', templateOptions: {type: 'date'}}},
+        company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: {select: '_id name'}},
+        employee: {
+            type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: {select: '_id name position'},
+            form: {
+                controller: function ($scope) {
+                    $scope.$watch('model.employee', function (newVal, oldVal) {
+                        if (!newVal) return;
+                        if (oldVal && oldVal._id === newVal._id) return;
 
-    employee: {type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: {select: '_id name'}},
+                        $scope.model.shift.position = newVal.position;
+
+                    })
+                }
+            }
+        },
+        manual: {type: Boolean, default: true},
+        shift: {
+            position: {
+                type: String,
+                form: {type: 'select-ref-static', templateOptions: {Type: 'Position'}},
+                label: 'Stelle'
+            },
+            beginHour: Number,
+            endHour: Number
+        },
+
+    },
+    {
+        name: 'PlanItem',
+        formatter: ` `,
+        title: 'date',
+        isViewElement: false,
+        autopopulate: true
+    });
+
+function * createPlanItem(employee, company, momentDate, shift, manual = false) {
+    const items = yield PlanItem.find({
+        employee,
+        company: company,
+        date: momentDate.toDate()
+    });
+
+    let conflict = false;
+
+    const _range = moment.range(momentDate.clone().hours(shift.begin), momentDate.clone().hours(shift.end));
+
+    for (var item of items) {
+        var range = moment.range(momentDate.clone().hours(item.shift.beginHour), momentDate.clone().hours(item.shift.endHour));
+        if (_range.overlaps(range)) conflict = true;
+    }
+
+    if (!conflict) {
+        yield PlanItem.create({
+            employee,
+            date: momentDate.toDate(),
+            company: company,
+            manual,
+            shift: {
+                position: shift.position,
+                beginHour: shift.begin,
+                endHour: shift.end
+            }
+        });
+    }
+};
+
+function getSerialDates(_date, includeThis = true) {
+    const dr = moment.range(cms.utils.beginOfMonth(_date), cms.utils.endOfMonth(_date));
+    if (includeThis) {
+        return _.filter(dr.toArray('days'), date => date.weekday() == moment(_date).weekday());
+    }
+    return _.filter(dr.toArray('days'), date => date.weekday() == moment(_date).weekday() && date.date() !== moment(_date).date());
+}
+
+function * calculateDifferent(month) {
+
+    const employees = yield Employee.find({}).lean();
+    for (const employee of employees) {
+        // sum
+
+        const planItems = yield PlanItem.find({
+            date: {
+                $gte: cms.utils.beginOfMonth(month),
+                $lte: cms.utils.endOfMonth(month)
+            },
+            employee: employee._id
+        }).lean();
+
+        const sum = _.reduce(planItems, (sum, plan) => {
+            sum += plan.shift.endHour - plan.shift.beginHour;
+            return sum;
+        }, 0)
+
+        // remove result if exists
+
+        _.remove(employee.different, {month: moment(month).startOf('month').toDate()});
+
+        const lastDifferent = _.find(employee.different, {month: moment(month).subtract(1, 'months').startOf('month').toDate()});
+
+        if (lastDifferent) {
+
+            employee.different.push({
+                month: moment(month).startOf('month').toDate(),
+                maxHour: employee.maxHour,
+                quantity: sum - employee.maxHour + lastDifferent.quantity
+            })
+
+            yield Employee.findByIdAndUpdate(employee._id, employee, {}).exec();
+        }
+
+    }
+}
+
+const PlanView = cms.registerSchema({
+    name: String
 }, {
-    name: 'PlanItem',
-    formatter: `
-            <h4>{{model.name}}</h4>
-        `,
+    name: 'PlanView',
+    formatterUrl: 'backend/plan-view.html',
     title: 'name',
     isViewElement: false,
     autopopulate: true,
-    alwaysLoad: false
-});
-
-cms.registerWrapper('Plan', {
-    formatterUrl: 'backend/plan.html',
+    alwaysLoad: true,
     controller: function ($scope, cms, $uibModal, $timeout) {
         $scope.data = {
             month: new Date()
@@ -360,11 +545,12 @@ cms.registerWrapper('Plan', {
 
         $scope.show = function () {
 
-            cms.execServerFnForWrapper('Plan', 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
+            cms.execServerFn('PlanView', $scope.model, 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
                 const scope = $scope;
                 $uibModal.open({
+                    animate: false,
                     templateUrl: 'plan_result2.html',
-                    controller: function ($scope, $uibModalInstance, formService) {
+                    controller: function ($scope, $uibModalInstance, formService, $timeout) {
                         $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
                         $scope.weekday = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
                         $scope.weeks = JsonFn.clone(weeks, true);
@@ -374,9 +560,86 @@ cms.registerWrapper('Plan', {
                             $uibModalInstance.dismiss('cancel');
                         };
                         $scope.editEmployee = function (_id) {
-                            formService.edit(_id, 'Employee');
+                            formService.edit(_id, 'Employee', () => {
+                                $scope.refresh()
+                            });
                         }
                         $scope.formService = formService;
+
+                        $scope.refresh = function () {
+                            // cms.execServerFn('PlanView', scope.model, 'calculate', scope.data.month).then(({data}) => {});
+
+                            cms.execServerFn('PlanView', scope.model, 'getPlan', scope.data.month, scope.data.company, scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
+                                $timeout(() => {
+                                    $scope.emptyShifts = null;
+                                    $scope.weeks = null;
+                                    $scope.employees = null;
+                                    $timeout(() => {
+                                        $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
+                                        $scope.weeks = JsonFn.clone(weeks, true);
+                                        $scope.employees = JsonFn.clone(employees, true);
+                                    })
+                                })
+                            });
+                        }
+
+                        $scope.serialDelete = function (planItem) {
+                            cms.execServerFn('PlanView', scope.model, 'serialDelete', planItem).then(({data}) => {
+                                $scope.refresh();
+                            })
+                        }
+
+                        $scope.serialEdit = function (planItem) {
+                            const _planItem = angular.copy(planItem);
+
+                            formService.edit(planItem._id, 'PlanItem', (planItem) => {
+                                cms.execServerFn('PlanView', scope.model, 'serialEdit', _planItem, planItem).then(({data}) => {
+                                    $scope.refresh();
+                                })
+                            })
+
+
+                        }
+
+                        $scope.createPlanItem = function (date) {
+                            formService.add({
+                                date,
+                                company: scope.data.company
+                            }, 'PlanItem', () => {
+                                $scope.refresh();
+                            });
+
+                        }
+
+                        $scope.createSerialPlanItem = function (date) {
+                            formService.add({
+                                date,
+                                company: scope.data.company
+                            }, 'PlanItem', (model) => {
+                                cms.execServerFn('PlanView', scope.model, 'createSerialPlanItem', model).then(({data}) => {
+                                    $scope.refresh();
+                                })
+                            });
+                        }
+
+                        $scope.getDifferent = function (employee) {
+                            const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
+                            if (different) return different.quantity;
+                        }
+
+                        $scope.getMaxHour = function (employee) {
+                            const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
+                            if (different) return different.maxHour;
+                        }
+
+                        $scope.getLastDifferent = function (employee) {
+                            const different = _.find(employee.different, {month: moment(scope.data.month).subtract(1, 'months').startOf('month').toDate()})
+                            if (different) return different.quantity;
+                        }
+
+                        $scope.getShow = function (date) {
+                            return moment(scope.data.month).month() === moment(date).month();
+                        }
 
                     },
                     windowClass: 'cms-window',
@@ -385,7 +648,7 @@ cms.registerWrapper('Plan', {
         }
 
         $scope.refresh = () => {
-            cms.execServerFnForWrapper('Plan', 'isExists', $scope.data.month).then(({data}) => {
+            cms.execServerFn('PlanView', $scope.model, 'isExists', $scope.data.month).then(({data}) => {
                 $scope.exists = data;
             });
         }
@@ -395,6 +658,50 @@ cms.registerWrapper('Plan', {
         $scope.$watch('serverFnData', () => $scope.refresh(), true)
     },
     serverFn: {
+        serialEdit: function*(_planItem, planItem) {
+            const dates = getSerialDates(_planItem.date);
+
+            delete planItem._id;
+            delete planItem.date;
+
+            yield PlanItem.update({
+                employee: _planItem.employee,
+                company: _planItem.company,
+                'shift.beginHour': _planItem.shift.beginHour,
+                'shift.endHour': _planItem.shift.endHour,
+                date: {$in: dates}
+            }, {
+                $set: planItem
+            }, {
+                multi: true
+            }).exec();
+
+            return 'successful';
+        },
+        serialDelete: function*(planItem) {
+            const dates = getSerialDates(planItem.date);
+            yield PlanItem.find({
+                employee: planItem.employee,
+                company: planItem.company,
+                'shift.beginHour': planItem.shift.beginHour,
+                'shift.endHour': planItem.shift.endHour,
+                date: {$in: dates}
+            }).remove().exec();
+            return 'successful';
+        },
+        createSerialPlanItem: function *(model) {
+            var dr = moment.range(cms.utils.beginOfMonth(model.date), cms.utils.endOfMonth(model.date));
+
+            for (var date of dr.toArray('days')) {
+                if (date.weekday() == moment(model.date).weekday()) {
+                    yield * createPlanItem(model.employee, model.company, date, {
+                        position: model.shift.position,
+                        begin: model.shift.beginHour,
+                        end: model.shift.endHour,
+                    }, true);
+                }
+            }
+        },
         isExists: function*(month) {
             const count = yield PlanItem.find({
                 date: {
@@ -409,78 +716,26 @@ cms.registerWrapper('Plan', {
                 date: {
                     $gte: cms.utils.beginOfMonth(month),
                     $lte: cms.utils.endOfMonth(month)
+                },
+                manual: {
+                    $ne: true
                 }
             }).exec();
-            const companies = yield Company.find();
-            for (const company of companies) {
-                for (const position of ['chef', 'bar', 'waiter']) {
-                    const planBuilder = new PlanBuilder(company, position, month);
-                    yield* planBuilder.init();
-                    yield* planBuilder.calculate();
-                }
-            }
 
-            // overtime
-            {
-                let plans_2 = yield PlanItem.aggregate().match({
-                    date: {
-                        $gte: cms.utils.beginOfMonth(month),
-                        $lte: cms.utils.endOfMonth(month)
-                    }
-                }).sort({'date': 1}).group({
-                    _id: {
-                        employee: '$employee'
-                    },
-                    sum: {$sum: {$subtract: ["$shift.endHour", "$shift.beginHour"]}},
-                    plans: {$push: "$_id"}
+            const planItems = yield PlanItem.find({});
 
-                }).sort({'sum': 1}).exec();
+            const employees = yield Employee.find({}).lean();
+            for (const employee of employees) {
+                for (const work of employee.work) {
+                    for (const shift of work.shift) {
+                        for (var weekDay of shift.weekDay) {
 
-                let employees = yield PlanItem.populate(plans_2, {
-                    path: "plans",
-                    options: {lean: true}
-                });
+                            var dr = moment.range(cms.utils.beginOfMonth(month), cms.utils.endOfMonth(month));
 
-                employees = yield Employee.populate(employees, {
-                    path: "_id.employee",
-                    options: {lean: true}
-                });
-
-                _.remove(employees, {_id: {employee: null}});
-                for (var employee of employees) {
-
-                    employee.records = yield EmployeeRecord.find({
-                        month: {
-                            $gte: cms.utils.beginOfMonth(month),
-                            $lte: cms.utils.endOfMonth(month)
-                        },
-                        employee: employee._id.employee._id
-                    }).lean();
-
-                    for (const record of employee.records) {
-                        const plans = employee.plans.filter(plan => plan.company._id.equals(record.company._id));
-                        record.sum = _.reduce(plans, (sum, plan) => {
-                            sum += plan.shift.endHour - plan.shift.beginHour;
-                            return sum;
-                        }, 0)
-
-                        if (!record.flexible) {
-                            if (record.sum < record.maxHour) {
-                                let overTime = record.maxHour - record.sum;
-                                let subMenge = [...plans];
-                                cms.utils.shuffle(subMenge);
-                                while (overTime > 0 && subMenge.length > 0) {
-                                    const planItem = subMenge.shift();
-                                    if (planItem && _.filter(employee.plans, plan => plan.date.getDate() === planItem.date.getDate()).length == 1) {
-                                        const shift = planItem.shift;
-                                        const _overTime = overTime - shift.maxOverTime >= 0 ? shift.maxOverTime : overTime;
-                                        overTime = overTime - shift.maxOverTime >= 0 ? overTime - shift.maxOverTime : 0;
-                                        shift.overTime = _overTime;
-                                        shift.endHour = shift.endHour + _overTime;
-                                    }
-                                    yield PlanItem.update({_id: planItem._id}, planItem).exec();
+                            for (var date of dr.toArray('days')) {
+                                if (date.weekday() == weekDay) {
+                                    yield * createPlanItem(employee, work.company, date, shift);
                                 }
-
                             }
                         }
                     }
@@ -498,7 +753,7 @@ cms.registerWrapper('Plan', {
                     $gte: cms.utils.beginOfMonth(month),
                     $lte: cms.utils.endOfMonth(month)
                 }
-            }).group({
+            }).sort('shift.beginHour').group({
                 _id: {
                     week: {$week: $_date},
                     day: {$dayOfMonth: $_date},
@@ -534,23 +789,7 @@ cms.registerWrapper('Plan', {
                 week.days.sort(({_id:{dayOfWeek:d1}}, {_id:{dayOfWeek:d2}}) => d1 - d2);
             });
 
-            let plans_1 = yield PlanItem.aggregate().match({
-                company: mongoose.Types.ObjectId(companyId),
-                'shift.position': position,
-                date: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).group({
-                _id: {
-                    employee: '$employee'
-                },
-                sum: {$sum: {$subtract: ["$shift.endHour", "$shift.beginHour"]}},
-                plans: {$push: "$_id"}
-
-            }).sort({'sum': 1}).exec();
-
-            const ids = plans_1.filter(p => p._id.employee).map(p => mongoose.Types.ObjectId(p._id.employee));
+            const ids = (yield Employee.find({'work.company': companyId})).map(e => mongoose.Types.ObjectId(e._id));
 
             let plans_2 = yield PlanItem.aggregate().match({
                 employee: {$in: ids},
@@ -572,27 +811,68 @@ cms.registerWrapper('Plan', {
                 options: {lean: true}
             });
 
+            yield * calculateDifferent(month);
+
             employees = yield Employee.populate(employees, {
                 path: "_id.employee",
                 options: {lean: true}
             });
 
             let [emptyShifts] = _.remove(employees, {_id: {employee: null}});
-            for (var employee of employees) {
-                employee.records = yield EmployeeRecord.find({
-                    month: {
+
+            for (const employee of employees) {
+                employee.planItems = yield PlanItem.find({
+                    date: {
                         $gte: cms.utils.beginOfMonth(month),
                         $lte: cms.utils.endOfMonth(month)
                     },
                     employee: employee._id.employee._id
                 }).lean();
-                employee.records.forEach(record => {
-                    const plans = employee.plans.filter(plan => plan.company._id.equals(record.company._id));
-                    record.sum = _.reduce(plans, (sum, plan) => {
-                        sum += plan.shift.endHour - plan.shift.beginHour;
-                        return sum;
-                    }, 0)
-                })
+
+                employee.sum = _.reduce(employee.planItems, (sum, plan) => {
+                    sum += plan.shift.endHour - plan.shift.beginHour;
+                    return sum;
+                }, 0)
+            }
+
+            // validation
+            for (const week of weeks) {
+                for (const day of week.days) {
+
+                    const mDate = moment(day._id.date);
+
+                    if (mDate.month() !== moment(month).month()) break;
+
+                    const conditions = yield ShiftCondition.find({
+                        company: companyId,
+                        position,
+                        weekDay: mDate.weekday()
+                    });
+
+                    const warnings = [];
+
+                    for (const condition of conditions) {
+                        const range = moment.range(mDate.clone().hours(condition.begin), mDate.clone().hours(condition.end));
+
+                        let fulfilled = true;
+                        for (var hour of _.dropRight(range.toArray('hours'))) {
+                            const hourRange = moment.range(hour.clone().startOf('hour'), hour.clone().endOf('hour'));
+                            let number = 0;
+
+                            for (var plan of day.plans) {
+                                const planRange = moment.range(mDate.clone().hours(plan.shift.beginHour).startOf('hour'), mDate.clone().hours(plan.shift.endHour).startOf('hour'));
+                                if (planRange.contains(hourRange)) number++;
+                            }
+
+                            if (condition.min && number < condition.min) fulfilled = false;
+                            if (condition.max && number > condition.max) fulfilled = false;
+                        }
+
+                        if (!fulfilled) warnings.push(`${condition.begin}-${condition.end} min: ${condition.min}`);
+                    }
+
+                    day.warnings = warnings;
+                }
             }
 
             return {emptyShifts, employees, weeks};
@@ -601,244 +881,3 @@ cms.registerWrapper('Plan', {
     }
 
 });
-
-
-/*cms.registerWrapper('FixConfirmTime', {
- formatter: `
- <div>
- <button class="btn btn-success btn-outline cms-btn btn-xs"
- ng-click="k = serverFn.fix();">
- Fix
- </button>
- <br>
- <p class="text-success">
- {{serverFnData[k].result}}
- </p>
- </div>
- `,
- controller: function ($scope, cms) {
- },
- serverFn: {
- fix: function*() {
- const company = yield Company.findOne({name:'LXL'}).lean();
- const checkevents = yield cms.getModel('CheckEvent').find({});
- for (const checkevent of checkevents) {
- checkevent.company = company;
- yield checkevent.save();
- }
-
- return 'successful';
- }
- }
-
- });*/
-
-
-cms.registerWrapper('Lohn', {
-    formatterUrl: 'backend/active-employee.html',
-    controller: function ($scope, cms, formService, $uibModal) {
-        $scope.data = {
-            month: new Date(),
-            position: 'Alle'
-        };
-        $scope.companyList = cms.types.Company.list;
-        $scope.positions = cms.types.Position.list.map(v => v.name);
-        const refreshLocal = ({position, company}) => {
-            if (position && company) {
-                $scope.records = $scope._records.filter(e => {
-                    if (position === 'Alle') return e.company._id === company;
-                    return e.employee.position === position && e.company._id === company;
-                });
-            }
-        };
-        $scope.$watch('data', refreshLocal, true);
-
-        $scope.showGenerateBtn = false;
-
-        const refresh = (month) => {
-            cms.execServerFnForWrapper('Lohn', 'isExists', month).then(({data}) => {
-                $scope.showGenerateBtn = !data;
-                if (data) {
-                    cms.execServerFnForWrapper('Lohn', 'getRecords', month).then(({data}) => {
-                        $scope._records = data;
-                        refreshLocal($scope.data);
-                    });
-                } else {
-                    $scope._records = [];
-                    refreshLocal($scope.data);
-                }
-            });
-        };
-
-        $scope.$watch('data.month', refresh);
-
-        $scope.refresh = () => refresh($scope.data.month);
-
-        $scope.formService = formService;
-
-        $scope.chooseProfile = function (record) {
-            $uibModal.open({
-                templateUrl: 'choose-profile.html',
-                controller: function ($scope, $uibModalInstance, formService) {
-                    $scope.data = {};
-                    $scope.profiles = record.profiles;
-                    $scope.cancel = ()=>$uibModalInstance.dismiss('cancel');
-                    $scope.choose = profile => {
-                        $uibModalInstance.close(profile);
-                    }
-                }
-            }).result.then(profile => {
-                _.assign(record, _.pickBy(profile, (v, k) => k !== '_id', true));
-                cms.updateElement('EmployeeRecord', record, () => {
-                    confirm('update successful');
-                    refresh($scope.data.month);
-                });
-            });
-        }
-
-        $scope.remove = function (record) {
-            cms.removeElement('EmployeeRecord', record._id, () => $scope.refresh());
-        }
-
-        $scope.addMore = function () {
-            cms.execServerFnForWrapper('Lohn', 'findNotWorkingEmployees', $scope.data.month).then(({data}) => {
-                $uibModal.open({
-                    templateUrl: 'add-more.html',
-                    controller: ['$scope', '$uibModalInstance', 'formService', function (scope, instance, formService) {
-                        scope.employeeList = data;
-                        scope.companyList = $scope.companyList;
-                        scope.data = {};
-                        scope.refresh = function () {
-                            if (!scope.data.company) return;
-                            scope.employees = _.filter(scope.employeeList, employee => {
-                                return _.find(employee.company, {_id: scope.data.company._id});
-                            })
-                        };
-                        scope.$watch('data.company', scope.refresh);
-                        scope._ = _;
-                        scope.instance = instance;
-
-                        scope.result = [];
-
-                        scope.cancel = () => instance.dismiss('cancel');
-                    }]
-                }).result.then(employees => {
-                    cms.execServerFnForWrapper('Lohn', 'addNotWorkingEmployees', employees, $scope.data.month).then(({data}) => {
-                        $scope.refresh();
-                    });
-                });
-            });
-
-        }
-
-        $scope.$watch('serverFnData', () => $scope.refresh(), true)
-    },
-
-    serverFn: {
-        isExists: function*(month) {
-            const count = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).count();
-            return count > 0;
-        },
-        findNotWorkingEmployees: function*(month) {
-            const records = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).lean();
-            const _ids = records.map(record => record.employee._id)
-
-            const employees = yield Employee.find({'_id': {$nin: _ids}});
-            return employees;
-        },
-        addNotWorkingEmployees: function*(employees, month) {
-            for (const employee of employees) {
-                for (const work of employee.work) {
-                    const defaultProfile = _.find(work.item, {default: true});
-                    const record = {
-                        employee: employee._id,
-                        month,
-                        company: work.company
-                    }
-                    if (defaultProfile) {
-                        _.assign(record, defaultProfile);
-                        delete record._id;
-                        record.position = employee.position;
-                        yield EmployeeRecord.create(record);
-                    }
-                }
-            }
-            return 'erfolgreich';
-
-        },
-        generate: function*(month) {
-            const employees = yield Employee.find().lean();
-            for (const employee of employees) {
-                for (const work of employee.work) {
-                    if (work.status === 'working') {
-                        const defaultProfile = _.find(work.item, {default: true});
-                        const record = {
-                            employee: employee._id,
-                            month,
-                            company: work.company
-                        }
-                        if (defaultProfile) {
-                            _.assign(record, defaultProfile);
-                            delete record._id;
-                            record.position = employee.position;
-                            yield EmployeeRecord.create(record);
-                        }
-                    }
-                }
-            }
-            return 'erfolgreich';
-        },
-        getRecords: function*(month) {
-            const records = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).lean();
-            for (const record of records) {
-                const report = yield cms.Wrapper.list.Report.serverFn.totalHourForEmployee(record.employee, {
-                    from: cms.utils.beginOfMonth(month),
-                    to: cms.utils.endOfMonth(month)
-                });
-                if (report) {
-                    record.totalHour = report.total;
-                }
-                if (record.manualTotalHour > 0) record.totalHour = record.manualTotalHour;
-                if (record.fixSalary > 0) {
-                    record.realSalary = record.fixSalary + record.bonus;
-                } else {
-                    record.salary = record.maxHour * record.workrate;
-
-                    if (record.totalHour) {
-                        if (record.equivalentHour > 0) {
-                            record.restHour = record.totalHour - record.equivalentHour;
-                            record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
-                            record.realSalary = record.remaining + record.salary;
-                        } else {
-                            record.restHour = record.totalHour - record.maxHour;
-                            record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
-                        }
-                    }
-                }
-
-                const work = _.find(record.employee.work, w => w.company._id.equals(record.company._id));
-                if (work) {
-                    record.profiles = work.item;
-                }
-            }
-            return records;
-        }
-    }
-
-});
-

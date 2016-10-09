@@ -6,7 +6,7 @@ cms.mongoose = mongoose;
 cms.resolvePath = (p) => `backend/${p}`;
 cms.data.security = false;
 cms.listen(8888);
-mongoose.connect('mongodb://localhost/mobile');
+mongoose.connect('mongodb://localhost/uyen');
 cms.data.webtype = cms.Enum.WebType.APPLICATION;
 
 cms.use(require('cmsmon/mobile'));
