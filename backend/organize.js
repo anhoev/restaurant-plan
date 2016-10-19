@@ -2,7 +2,6 @@
 const JsonFn = require('json-fn');
 const _ = require('lodash');
 const path = require('path');
-const PlanBuilder = require('./plan2');
 const moment = require('moment-timezone');
 require('moment-range');
 moment.tz.setDefault("Europe/Berlin");
@@ -23,6 +22,7 @@ const Company = cms.registerSchema({
     },
     {
         name: 'Company',
+        label: 'Firma',
         formatter: `
             <h4>{{model.name}}</h4>
         `,
@@ -37,102 +37,13 @@ const Position = cms.registerSchema({
     },
     {
         name: 'Position',
+        label: 'Stelle',
         formatter: `<h4>{{model.name}}</h4>`,
         title: 'name',
         isViewElement: false,
         alwaysLoad: true
-    });
-
-const EmployeeRecord = cms.registerSchema({
-    employee: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Employee',
-        autopopulate: {select: '_id name Id position work'},
-        label: 'Mitarbeiter',
-        form: {templateOptions: {class: 'col-sm-6'}},
-        query: {
-            populate: 'position'
-        }
-    },
-    company: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Company',
-        autopopulate: {select: '_id name'},
-        label: 'Firma',
-        form: {templateOptions: {class: 'col-sm-6'}}
-    },
-    month: {
-        type: Date,
-        form: {type: 'input', templateOptions: {type: 'month', class: 'col-sm-12'}},
-        label: 'Monat',
-        query: {
-            default: new Date(),
-            fn: month => ({
-                $gte: moment(month).clone().subtract(1, 'months').date(20).startOf('day').toDate(),
-                $lte: moment(month).clone().date(19).endOf('day').toDate()
-            })
-        }
-    },
-    position: {
-        type: String,
-        form: {type: 'select-ref-static', templateOptions: {Type: 'Position', class: 'col-sm-4', labelProp: 'label'}},
-        label: 'Stelle'
-    },
-    workType: {
-        type: String,
-        form: {
-            type: 'select',
-            label: 'Arbeitsart',
-            templateOptions: {
-                options: [{name: 'Vollzeit', value: 'Vollzeit'}, {
-                    name: 'Teilzeit',
-                    value: 'Teilzeit'
-                }, {name: 'MiniJob', value: 'MiniJob'}],
-                class: 'col-sm-4'
-            }
-        }
-    },
-    //fixSalary: {type: Number, label: 'Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
-    realWorkrate: {type: Number, label: 'echte Lohn', form: {templateOptions: {class: 'col-sm-4'}}},
-    workrate: {type: Number, label: 'Lohn (Steuer Lohn)', form: {templateOptions: {class: 'col-sm-4'}}},
-    netIncome: {type: Number, label: 'netto Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
-    maxHour: {type: Number, label: 'max Stunden (Steuer Stunden)', form: {templateOptions: {class: 'col-sm-4'}}},
-    equivalentHour: {type: Number, label: 'Äquivalent Stunden', form: {templateOptions: {class: 'col-sm-4'}}},
-    bonus: {type: Number, label: 'Bonus', form: {templateOptions: {class: 'col-sm-4'}}},
-    note: {type: String, label: 'Note', form: {templateOptions: {class: 'col-sm-4'}}},
-    manualTotalHour: {type: Number, label: 'Gesamte Stunden', form: {templateOptions: {class: 'col-sm-4'}}},
-    paid: {
-        type: String,
-        label: 'Bezahlt',
-        form: {
-            type: 'select',
-            default: 'Nettolohn',
-            templateOptions: {
-                options: [
-                    {name: 'Alle', value: 'Alle'},
-                    {name: 'Lohn', value: 'Nettolohn'},
-                    {name: 'Nicht', value: 'Nicht'}],
-                class: 'col-sm-4'
-            }
-        }
-    },
-    takeOffDays: {
-        type: [{
-            end: {type: Number, label: 'Ende'},
-            begin: {type: Number, label: 'Anfang'},
-        }], label: 'Urlaub'
-    },
-    flexible: {type: Boolean, default: false, label: 'Flexibel'},
-}, {
-    name: 'EmployeeRecord',
-    formatter: `
-            <h4>{{model.name}}</h4>
-        `,
-    title: 'name',
-    isViewElement: false,
-    alwaysLoad: false,
-    autopopulate: true
-});
+    }
+);
 
 const Employee = cms.registerSchema({
         name: {type: String, label: 'Name'},
@@ -167,8 +78,9 @@ const Employee = cms.registerSchema({
                     type: [{
                         weekDay: {
                             type: [Number], form: {
-                                type: 'multi-select',
+                                type: 'select',
                                 templateOptions: {
+                                    multiple: true,
                                     options: [
                                         {name: 'So', value: 0},
                                         {name: 'Mo', value: 1},
@@ -259,30 +171,6 @@ const Employee = cms.registerSchema({
             {title: 'different', fields: ['different']}
         ],
         initSchema: function (schema) {
-            schema.virtual('active').get(function () {
-                let active = false, done = false, events;
-                cms.Types.CheckEvent.Model.find({
-                    employee: this._id,
-                    time: {
-                        $gte: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(4, 'hour').toDate(),
-                        $lt: moment().tz('Europe/Berlin').subtract(4, 'hour').startOf('day').add(1, 'day').add(4, 'hour').toDate()
-                    }
-                }).exec(function (err, result) {
-                    done = true;
-                    events = result;
-                });
-
-                deasync.loopWhile(()=>!done);
-
-                const checkIns = _.filter(events, ({isCheckIn}) => isCheckIn);
-                const checkOuts = _.filter(events, ({isCheckIn}) => !isCheckIn);
-                if (checkIns.length === checkOuts.length) active = false;
-                if (checkIns.length > checkOuts.length) active = true;
-
-                return active;
-
-            });
-
             schema.virtual('company').get(function () {
                 return _.map(this.work, work => work.company);
             });
@@ -318,8 +206,9 @@ const ShiftCondition = cms.registerSchema({
     },
     weekDay: {
         type: [Number], form: {
-            type: 'multi-select',
+            type: 'select',
             templateOptions: {
+                multiple: true,
                 options: [
                     {name: 'So', value: 0},
                     {name: 'Mo', value: 1},
@@ -352,64 +241,6 @@ const ShiftCondition = cms.registerSchema({
     autopopulate: true,
     label: 'Schichtsbedingung'
 });
-
-const Shift = cms.registerSchema({
-    weekDay: {
-        type: String,
-        form: makeSelect('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'),
-        label: 'Wochentag'
-    },
-    season: {
-        type: String,
-        default: 'Sommer',
-        form: makeSelect('Sommer', 'Winter'),
-        label: 'Saison'
-    },
-    beginHour: {type: Number, label: 'Beginn'},
-    endHour: {type: Number, label: 'Ende'},
-    company: {type: mongoose.Schema.Types.ObjectId, ref: 'Company', autopopulate: {select: '_id name'}, label: 'Firma'},
-    position: {
-        type: [{
-            type: String,
-            form: {type: 'select-ref-static', templateOptions: {Type: 'Position'}}
-        }],
-        label: 'Stelle'
-    },
-    mark: {
-        type: String,
-        form: _.assign(makeSelect('', 'waiter', 'bar', 'waiter & bar')),
-        label: 'Mark'
-    },
-    maxOverTime: {type: Number, default: 0, label: 'Max Überstunden'}
-}, {
-    name: 'Shift',
-    label: 'Schicht',
-    formatter: `
-            <h4>{{model.weekDay}} - {{model.beginHour}}-{{model.endHour}}</h4>
-        `,
-    title: 'name',
-    isViewElement: false,
-    mTemplate: `
-            <StackLayout>
-                <Label [text]="model.name+' - '+model.weekDay+' - '+ model.beginHour+' - '+model.endHour"></Label>
-            </StackLayout>
-        `,
-    fn: {
-        getWorkingTime: function () {
-            return this.endHour < this.beginHour ? 24 + this.endHour - this.beginHour : this.endHour - this.beginHour;
-        }
-    },
-    autopopulate: true,
-    alwaysLoad: true
-});
-
-const employeeConfig = {
-    type: [{type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: {select: '_id name'}}],
-    form: {
-        type: 'refSelect',
-        templateOptions: {Type: 'Employee', labelProp: cms.Types['Employee'].info.title, multiple: true}
-    }
-};
 
 const PlanItem = cms.registerSchema({
         date: {type: Date, form: {type: 'input', templateOptions: {type: 'date'}}},
@@ -527,357 +358,358 @@ function * calculateDifferent(month) {
 }
 
 const PlanView = cms.registerSchema({
-    name: String
-}, {
-    name: 'PlanView',
-    formatterUrl: 'backend/plan-view.html',
-    title: 'name',
-    isViewElement: false,
-    autopopulate: true,
-    alwaysLoad: true,
-    controller: function ($scope, cms, $uibModal, $timeout) {
-        $scope.data = {
-            month: new Date()
-        };
+        name: String
+    },
+    {
+        name: 'PlanView',
+        formatterUrl: 'backend/plan-view.html',
+        title: 'name',
+        isViewElement: false,
+        autopopulate: true,
+        alwaysLoad: true,
+        controller: function ($scope, cms, $uibModal, $timeout) {
+            $scope.data = {
+                month: new Date()
+            };
 
-        $scope.companyList = Types.Company.list;
-        $scope.position = 'waiter';
+            $scope.companyList = Types.Company.list;
+            $scope.position = 'waiter';
 
-        $scope.show = function () {
+            $scope.show = function () {
 
-            cms.execServerFn('PlanView', $scope.model, 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
-                const scope = $scope;
-                $uibModal.open({
-                    animate: false,
-                    templateUrl: 'plan_result2.html',
-                    controller: function ($scope, $uibModalInstance, formService, $timeout) {
-                        $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
-                        $scope.weekday = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-                        $scope.weeks = JsonFn.clone(weeks, true);
-                        $scope.employees = JsonFn.clone(employees, true);
+                cms.execServerFn('PlanView', $scope.model, 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
+                    const scope = $scope;
+                    $uibModal.open({
+                        animate: false,
+                        templateUrl: 'plan_result2.html',
+                        controller: function ($scope, $uibModalInstance, formService, $timeout) {
+                            $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
+                            $scope.weekday = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+                            $scope.weeks = JsonFn.clone(weeks, true);
+                            $scope.employees = JsonFn.clone(employees, true);
 
-                        $scope.cancel = function () {
-                            $uibModalInstance.dismiss('cancel');
-                        };
-                        $scope.editEmployee = function (_id) {
-                            formService.edit(_id, 'Employee', () => {
-                                $scope.refresh()
-                            });
-                        }
-                        $scope.formService = formService;
+                            $scope.cancel = function () {
+                                $uibModalInstance.dismiss('cancel');
+                            };
+                            $scope.editEmployee = function (_id) {
+                                formService.edit(_id, 'Employee', () => {
+                                    $scope.refresh()
+                                });
+                            }
+                            $scope.formService = formService;
 
-                        $scope.refresh = function () {
-                            // cms.execServerFn('PlanView', scope.model, 'calculate', scope.data.month).then(({data}) => {});
+                            $scope.refresh = function () {
+                                // cms.execServerFn('PlanView', scope.model, 'calculate', scope.data.month).then(({data}) => {});
 
-                            cms.execServerFn('PlanView', scope.model, 'getPlan', scope.data.month, scope.data.company, scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
-                                $timeout(() => {
-                                    $scope.emptyShifts = null;
-                                    $scope.weeks = null;
-                                    $scope.employees = null;
+                                cms.execServerFn('PlanView', scope.model, 'getPlan', scope.data.month, scope.data.company, scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
                                     $timeout(() => {
-                                        $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
-                                        $scope.weeks = JsonFn.clone(weeks, true);
-                                        $scope.employees = JsonFn.clone(employees, true);
+                                        $scope.emptyShifts = null;
+                                        $scope.weeks = null;
+                                        $scope.employees = null;
+                                        $timeout(() => {
+                                            $scope.emptyShifts = emptyShifts ? JsonFn.clone(emptyShifts, true) : null;
+                                            $scope.weeks = JsonFn.clone(weeks, true);
+                                            $scope.employees = JsonFn.clone(employees, true);
+                                        })
+                                    })
+                                });
+                            }
+
+                            $scope.serialDelete = function (planItem) {
+                                cms.execServerFn('PlanView', scope.model, 'serialDelete', planItem).then(({data}) => {
+                                    $scope.refresh();
+                                })
+                            }
+
+                            $scope.serialEdit = function (planItem) {
+                                const _planItem = angular.copy(planItem);
+
+                                formService.edit(planItem._id, 'PlanItem', (planItem) => {
+                                    cms.execServerFn('PlanView', scope.model, 'serialEdit', _planItem, planItem).then(({data}) => {
+                                        $scope.refresh();
                                     })
                                 })
-                            });
-                        }
 
-                        $scope.serialDelete = function (planItem) {
-                            cms.execServerFn('PlanView', scope.model, 'serialDelete', planItem).then(({data}) => {
-                                $scope.refresh();
-                            })
-                        }
 
-                        $scope.serialEdit = function (planItem) {
-                            const _planItem = angular.copy(planItem);
+                            }
 
-                            formService.edit(planItem._id, 'PlanItem', (planItem) => {
-                                cms.execServerFn('PlanView', scope.model, 'serialEdit', _planItem, planItem).then(({data}) => {
+                            $scope.createPlanItem = function (date) {
+                                formService.add({
+                                    date,
+                                    company: scope.data.company
+                                }, 'PlanItem', () => {
                                     $scope.refresh();
-                                })
-                            })
+                                });
 
+                            }
 
-                        }
+                            $scope.createSerialPlanItem = function (date) {
+                                formService.add({
+                                    date,
+                                    company: scope.data.company
+                                }, 'PlanItem', (model) => {
+                                    cms.execServerFn('PlanView', scope.model, 'createSerialPlanItem', model).then(({data}) => {
+                                        $scope.refresh();
+                                    })
+                                });
+                            }
 
-                        $scope.createPlanItem = function (date) {
-                            formService.add({
-                                date,
-                                company: scope.data.company
-                            }, 'PlanItem', () => {
-                                $scope.refresh();
-                            });
+                            $scope.getDifferent = function (employee) {
+                                const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
+                                if (different) return different.quantity;
+                            }
 
-                        }
+                            $scope.getMaxHour = function (employee) {
+                                const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
+                                if (different) return different.maxHour;
+                            }
 
-                        $scope.createSerialPlanItem = function (date) {
-                            formService.add({
-                                date,
-                                company: scope.data.company
-                            }, 'PlanItem', (model) => {
-                                cms.execServerFn('PlanView', scope.model, 'createSerialPlanItem', model).then(({data}) => {
-                                    $scope.refresh();
-                                })
-                            });
-                        }
+                            $scope.getLastDifferent = function (employee) {
+                                const different = _.find(employee.different, {month: moment(scope.data.month).subtract(1, 'months').startOf('month').toDate()})
+                                if (different) return different.quantity;
+                            }
 
-                        $scope.getDifferent = function (employee) {
-                            const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
-                            if (different) return different.quantity;
-                        }
+                            $scope.getShow = function (date) {
+                                return moment(scope.data.month).month() === moment(date).month();
+                            }
 
-                        $scope.getMaxHour = function (employee) {
-                            const different = _.find(employee.different, {month: moment(scope.data.month).startOf('month').toDate()})
-                            if (different) return different.maxHour;
-                        }
-
-                        $scope.getLastDifferent = function (employee) {
-                            const different = _.find(employee.different, {month: moment(scope.data.month).subtract(1, 'months').startOf('month').toDate()})
-                            if (different) return different.quantity;
-                        }
-
-                        $scope.getShow = function (date) {
-                            return moment(scope.data.month).month() === moment(date).month();
-                        }
-
-                    },
-                    windowClass: 'cms-window',
+                        },
+                        windowClass: 'cms-window',
+                    });
                 });
-            });
-        }
-
-        $scope.refresh = () => {
-            cms.execServerFn('PlanView', $scope.model, 'isExists', $scope.data.month).then(({data}) => {
-                $scope.exists = data;
-            });
-        }
-
-        $scope.$watch('data.month', () => $scope.refresh());
-
-        $scope.$watch('serverFnData', () => $scope.refresh(), true)
-    },
-    serverFn: {
-        serialEdit: function*(_planItem, planItem) {
-            const dates = getSerialDates(_planItem.date);
-
-            delete planItem._id;
-            delete planItem.date;
-
-            yield PlanItem.update({
-                employee: _planItem.employee,
-                company: _planItem.company,
-                'shift.beginHour': _planItem.shift.beginHour,
-                'shift.endHour': _planItem.shift.endHour,
-                date: {$in: dates}
-            }, {
-                $set: planItem
-            }, {
-                multi: true
-            }).exec();
-
-            return 'successful';
-        },
-        serialDelete: function*(planItem) {
-            const dates = getSerialDates(planItem.date);
-            yield PlanItem.find({
-                employee: planItem.employee,
-                company: planItem.company,
-                'shift.beginHour': planItem.shift.beginHour,
-                'shift.endHour': planItem.shift.endHour,
-                date: {$in: dates}
-            }).remove().exec();
-            return 'successful';
-        },
-        createSerialPlanItem: function *(model) {
-            var dr = moment.range(cms.utils.beginOfMonth(model.date), cms.utils.endOfMonth(model.date));
-
-            for (var date of dr.toArray('days')) {
-                if (date.weekday() == moment(model.date).weekday()) {
-                    yield * createPlanItem(model.employee, model.company, date, {
-                        position: model.shift.position,
-                        begin: model.shift.beginHour,
-                        end: model.shift.endHour,
-                    }, true);
-                }
             }
+
+            $scope.refresh = () => {
+                cms.execServerFn('PlanView', $scope.model, 'isExists', $scope.data.month).then(({data}) => {
+                    $scope.exists = data;
+                });
+            }
+
+            $scope.$watch('data.month', () => $scope.refresh());
+
+            $scope.$watch('serverFnData', () => $scope.refresh(), true)
         },
-        isExists: function*(month) {
-            const count = yield PlanItem.find({
-                date: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
+        serverFn: {
+            serialEdit: function*(_planItem, planItem) {
+                const dates = getSerialDates(_planItem.date);
+
+                delete planItem._id;
+                delete planItem.date;
+
+                yield PlanItem.update({
+                    employee: _planItem.employee,
+                    company: _planItem.company,
+                    'shift.beginHour': _planItem.shift.beginHour,
+                    'shift.endHour': _planItem.shift.endHour,
+                    date: {$in: dates}
+                }, {
+                    $set: planItem
+                }, {
+                    multi: true
+                }).exec();
+
+                return 'successful';
+            },
+            serialDelete: function*(planItem) {
+                const dates = getSerialDates(planItem.date);
+                yield PlanItem.find({
+                    employee: planItem.employee,
+                    company: planItem.company,
+                    'shift.beginHour': planItem.shift.beginHour,
+                    'shift.endHour': planItem.shift.endHour,
+                    date: {$in: dates}
+                }).remove().exec();
+                return 'successful';
+            },
+            createSerialPlanItem: function *(model) {
+                var dr = moment.range(cms.utils.beginOfMonth(model.date), cms.utils.endOfMonth(model.date));
+
+                for (var date of dr.toArray('days')) {
+                    if (date.weekday() == moment(model.date).weekday()) {
+                        yield * createPlanItem(model.employee, model.company, date, {
+                            position: model.shift.position,
+                            begin: model.shift.beginHour,
+                            end: model.shift.endHour,
+                        }, true);
+                    }
                 }
-            }).count();
-            return count > 0;
-        },
-        calculate: function*(month) {
-            yield PlanItem.remove({
-                date: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                },
-                manual: {
-                    $ne: true
-                }
-            }).exec();
+            },
+            isExists: function*(month) {
+                const count = yield PlanItem.find({
+                    date: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    }
+                }).count();
+                return count > 0;
+            },
+            calculate: function*(month) {
+                yield PlanItem.remove({
+                    date: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    },
+                    manual: {
+                        $ne: true
+                    }
+                }).exec();
 
-            const planItems = yield PlanItem.find({});
+                const planItems = yield PlanItem.find({});
 
-            const employees = yield Employee.find({}).lean();
-            for (const employee of employees) {
-                for (const work of employee.work) {
-                    for (const shift of work.shift) {
-                        for (var weekDay of shift.weekDay) {
+                const employees = yield Employee.find({}).lean();
+                for (const employee of employees) {
+                    for (const work of employee.work) {
+                        for (const shift of work.shift) {
+                            for (var weekDay of shift.weekDay) {
 
-                            var dr = moment.range(cms.utils.beginOfMonth(month), cms.utils.endOfMonth(month));
+                                var dr = moment.range(cms.utils.beginOfMonth(month), cms.utils.endOfMonth(month));
 
-                            for (var date of dr.toArray('days')) {
-                                if (date.weekday() == weekDay) {
-                                    yield * createPlanItem(employee, work.company, date, shift);
+                                for (var date of dr.toArray('days')) {
+                                    if (date.weekday() == weekDay) {
+                                        yield * createPlanItem(employee, work.company, date, shift);
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            return 'successful';
-        },
-        getPlan: function*(month, companyId, position) {
-            const $_date = {$subtract: ["$date", (new Date()).getTimezoneOffset() * 60 * 1000]};
-            const planItems = yield PlanItem.aggregate().match({
-                company: mongoose.Types.ObjectId(companyId),
-                'shift.position': position,
-                date: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).sort('shift.beginHour').group({
-                _id: {
-                    week: {$week: $_date},
-                    day: {$dayOfMonth: $_date},
-                    dayOfWeek: {$dayOfWeek: $_date},
-                    date: '$date',
-                    month: {$month: $_date}
-                },
-                plans: {$push: "$_id"}
-            }).sort({'_id.day': 1}).group({
-                _id: {week: "$_id.week"},
-                days: {$push: "$$ROOT"}
-            }).sort({'_id.week': 1}).exec();
-
-            const weeks = yield PlanItem.populate(planItems, {
-                path: "days.plans",
-                options: {lean: true}
-            });
-
-            weeks.forEach(week => {
-                for (const i of [1, 2, 3, 4, 5, 6, 7]) {
-                    if (!_.find(week.days, {_id: {dayOfWeek: i}})) {
-                        const date = moment().isoWeek(week._id.week).isoWeekday(i - 1).toDate();
-                        week.days.push({
-                            _id: {
-                                day: date.getDate(),
-                                dayOfWeek: i,
-                                date: date,
-                                month: date.getMonth() + 1
-                            }, plans: []
-                        });
-                    }
-                }
-                week.days.sort(({_id:{dayOfWeek:d1}}, {_id:{dayOfWeek:d2}}) => d1 - d2);
-            });
-
-            const ids = (yield Employee.find({'work.company': companyId})).map(e => mongoose.Types.ObjectId(e._id));
-
-            let plans_2 = yield PlanItem.aggregate().match({
-                employee: {$in: ids},
-                date: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).sort({'date': 1}).group({
-                _id: {
-                    employee: '$employee'
-                },
-                sum: {$sum: {$subtract: ["$shift.endHour", "$shift.beginHour"]}},
-                plans: {$push: "$_id"}
-
-            }).sort({'sum': 1}).exec();
-
-            let employees = yield PlanItem.populate(plans_2, {
-                path: "plans",
-                options: {lean: true}
-            });
-
-            yield * calculateDifferent(month);
-
-            employees = yield Employee.populate(employees, {
-                path: "_id.employee",
-                options: {lean: true}
-            });
-
-            let [emptyShifts] = _.remove(employees, {_id: {employee: null}});
-
-            for (const employee of employees) {
-                employee.planItems = yield PlanItem.find({
+                return 'successful';
+            },
+            getPlan: function*(month, companyId, position) {
+                const $_date = {$subtract: ["$date", (new Date()).getTimezoneOffset() * 60 * 1000]};
+                const planItems = yield PlanItem.aggregate().match({
+                    company: mongoose.Types.ObjectId(companyId),
+                    'shift.position': position,
                     date: {
                         $gte: cms.utils.beginOfMonth(month),
                         $lte: cms.utils.endOfMonth(month)
+                    }
+                }).sort('shift.beginHour').group({
+                    _id: {
+                        week: {$week: $_date},
+                        day: {$dayOfMonth: $_date},
+                        dayOfWeek: {$dayOfWeek: $_date},
+                        date: '$date',
+                        month: {$month: $_date}
                     },
-                    employee: employee._id.employee._id
-                }).lean();
+                    plans: {$push: "$_id"}
+                }).sort({'_id.day': 1}).group({
+                    _id: {week: "$_id.week"},
+                    days: {$push: "$$ROOT"}
+                }).sort({'_id.week': 1}).exec();
 
-                employee.sum = _.reduce(employee.planItems, (sum, plan) => {
-                    sum += plan.shift.endHour - plan.shift.beginHour;
-                    return sum;
-                }, 0)
-            }
+                const weeks = yield PlanItem.populate(planItems, {
+                    path: "days.plans",
+                    options: {lean: true}
+                });
 
-            // validation
-            for (const week of weeks) {
-                for (const day of week.days) {
+                weeks.forEach(week => {
+                    for (const i of [1, 2, 3, 4, 5, 6, 7]) {
+                        if (!_.find(week.days, {_id: {dayOfWeek: i}})) {
+                            const date = moment().isoWeek(week._id.week).isoWeekday(i - 1).toDate();
+                            week.days.push({
+                                _id: {
+                                    day: date.getDate(),
+                                    dayOfWeek: i,
+                                    date: date,
+                                    month: date.getMonth() + 1
+                                }, plans: []
+                            });
+                        }
+                    }
+                    week.days.sort(({_id:{dayOfWeek:d1}}, {_id:{dayOfWeek:d2}}) => d1 - d2);
+                });
 
-                    const mDate = moment(day._id.date);
+                const ids = (yield Employee.find({'work.company': companyId})).map(e => mongoose.Types.ObjectId(e._id));
 
-                    if (mDate.month() !== moment(month).month()) break;
+                let plans_2 = yield PlanItem.aggregate().match({
+                    employee: {$in: ids},
+                    date: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    }
+                }).sort({'date': 1}).group({
+                    _id: {
+                        employee: '$employee'
+                    },
+                    sum: {$sum: {$subtract: ["$shift.endHour", "$shift.beginHour"]}},
+                    plans: {$push: "$_id"}
 
-                    const conditions = yield ShiftCondition.find({
-                        company: companyId,
-                        position,
-                        weekDay: mDate.weekday()
-                    });
+                }).sort({'sum': 1}).exec();
 
-                    const warnings = [];
+                let employees = yield PlanItem.populate(plans_2, {
+                    path: "plans",
+                    options: {lean: true}
+                });
 
-                    for (const condition of conditions) {
-                        const range = moment.range(mDate.clone().hours(condition.begin), mDate.clone().hours(condition.end));
+                yield * calculateDifferent(month);
 
-                        let fulfilled = true;
-                        for (var hour of _.dropRight(range.toArray('hours'))) {
-                            const hourRange = moment.range(hour.clone().startOf('hour'), hour.clone().endOf('hour'));
-                            let number = 0;
+                employees = yield Employee.populate(employees, {
+                    path: "_id.employee",
+                    options: {lean: true}
+                });
 
-                            for (var plan of day.plans) {
-                                const planRange = moment.range(mDate.clone().hours(plan.shift.beginHour).startOf('hour'), mDate.clone().hours(plan.shift.endHour).startOf('hour'));
-                                if (planRange.contains(hourRange)) number++;
+                let [emptyShifts] = _.remove(employees, {_id: {employee: null}});
+
+                for (const employee of employees) {
+                    employee.planItems = yield PlanItem.find({
+                        date: {
+                            $gte: cms.utils.beginOfMonth(month),
+                            $lte: cms.utils.endOfMonth(month)
+                        },
+                        employee: employee._id.employee._id
+                    }).lean();
+
+                    employee.sum = _.reduce(employee.planItems, (sum, plan) => {
+                        sum += plan.shift.endHour - plan.shift.beginHour;
+                        return sum;
+                    }, 0)
+                }
+
+                // validation
+                for (const week of weeks) {
+                    for (const day of week.days) {
+
+                        const mDate = moment(day._id.date);
+
+                        if (mDate.month() !== moment(month).month()) break;
+
+                        const conditions = yield ShiftCondition.find({
+                            company: companyId,
+                            position,
+                            weekDay: mDate.weekday()
+                        });
+
+                        const warnings = [];
+
+                        for (const condition of conditions) {
+                            const range = moment.range(mDate.clone().hours(condition.begin), mDate.clone().hours(condition.end));
+
+                            let fulfilled = true;
+                            for (var hour of _.dropRight(range.toArray('hours'))) {
+                                const hourRange = moment.range(hour.clone().startOf('hour'), hour.clone().endOf('hour'));
+                                let number = 0;
+
+                                for (var plan of day.plans) {
+                                    const planRange = moment.range(mDate.clone().hours(plan.shift.beginHour).startOf('hour'), mDate.clone().hours(plan.shift.endHour).startOf('hour'));
+                                    if (planRange.contains(hourRange)) number++;
+                                }
+
+                                if (condition.min && number < condition.min) fulfilled = false;
+                                if (condition.max && number > condition.max) fulfilled = false;
                             }
 
-                            if (condition.min && number < condition.min) fulfilled = false;
-                            if (condition.max && number > condition.max) fulfilled = false;
+                            if (!fulfilled) warnings.push(`${condition.begin}-${condition.end} min: ${condition.min}`);
                         }
 
-                        if (!fulfilled) warnings.push(`${condition.begin}-${condition.end} min: ${condition.min}`);
+                        day.warnings = warnings;
                     }
-
-                    day.warnings = warnings;
                 }
+
+                return {emptyShifts, employees, weeks};
+
             }
-
-            return {emptyShifts, employees, weeks};
-
         }
-    }
 
-});
+    });
