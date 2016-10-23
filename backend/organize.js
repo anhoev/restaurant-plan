@@ -16,9 +16,10 @@ cms.utils.beginOfMonth = month => moment(month).clone().subtract(1, 'months').da
 cms.utils.endOfMonth = month => moment(month).clone().date(19).endOf('day').toDate();
 
 const Company = cms.registerSchema({
-    name: {type: String, default: 'Name'}
+    name: {type: String, label: 'Name'}
 }, {
     name: 'Company',
+    label: 'Firma',
     formatter: `
             <h4>{{model.name}}</h4>
         `,
@@ -32,6 +33,7 @@ const Position = cms.registerSchema({
     label: {type: String}
 }, {
     name: 'Position',
+    label: 'Stelle',
     formatter: `<h4>{{model.name}}</h4>`,
     title: 'name',
     isViewElement: false,
@@ -85,13 +87,14 @@ const EmployeeRecord = cms.registerSchema({
                 }, {name: 'MiniJob', value: 'MiniJob'}],
                 class: 'col-sm-4'
             }
-        }
+        },
+        label: 'Arbeitsart',
     },
     //fixSalary: {type: Number, label: 'Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
     realWorkrate: {type: Number, label: 'echte Lohn', form: {templateOptions: {class: 'col-sm-4'}}},
     workrate: {type: Number, label: 'Lohn (Steuer Lohn)', form: {templateOptions: {class: 'col-sm-4'}}},
     netIncome: {type: Number, label: 'netto Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
-    maxHour: {type: Number, label: 'max Stunden (Steuer Stunden)', form: {templateOptions: {class: 'col-sm-4'}}},
+    maxHour: {type: Number, label: 'Monatsstunden', form: {templateOptions: {class: 'col-sm-4'}}},
     equivalentHour: {type: Number, label: 'Äquivalent Stunden', form: {templateOptions: {class: 'col-sm-4'}}},
     bonus: {type: Number, label: 'Bonus', form: {templateOptions: {class: 'col-sm-4'}}},
     note: {type: String, label: 'Note', form: {templateOptions: {class: 'col-sm-4'}}},
@@ -124,7 +127,7 @@ const EmployeeRecord = cms.registerSchema({
             <h4>{{model.name}}</h4>
         `,
     title: 'name',
-    isViewElement: false,
+    isViewElement: true,
     alwaysLoad: false,
     autopopulate: true
 });
@@ -158,7 +161,7 @@ const Employee = cms.registerSchema({
             },
             item: {
                 type: [{
-                    default: {type: Boolean, label: 'Default'},
+                    default: {type: Boolean, label: 'Default', form: {defaultValue: true}},
                     workType: {
                         type: String,
                         label: 'Arbeitsart',
@@ -173,11 +176,10 @@ const Employee = cms.registerSchema({
                         }
                     },
                     flexible: {type: Boolean, default: false, label: 'Flexibel'},
-                    maxHour: {type: Number, label: 'max Stunden'},
+                    maxHour: {type: Number, label: 'Monatsstunden'},
                     equivalentHour: {type: Number, label: 'Äquivalent Stunden'},
                     //fixSalary: {type: Number, label: 'Monatslohn'},
                     workrate: {type: Number, label: 'Lohn (Steuer)'},
-                    netIncome: {type: Number, label: 'netto Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
                     realWorkrate: {type: Number, label: 'echte Lohn'},
                     bonus: {type: Number, label: 'Bonus'},
                     manualTotalHour: {
@@ -185,6 +187,7 @@ const Employee = cms.registerSchema({
                         label: 'Gesamte Stunden',
                         form: {templateOptions: {tooltip: 'bei Wert 0 wird automatisch von Fingerscanner sammeln'}}
                     },
+                    netIncome: {type: Number, label: 'netto Monatslohn', form: {templateOptions: {class: 'col-sm-4'}}},
                 }],
                 form: {
                     type: 'tableSection',
@@ -204,15 +207,28 @@ const Employee = cms.registerSchema({
     name: 'Employee',
     label: 'Mitarbeiter',
     formatterUrl: 'backend/employee.html',
-    title: 'name',
+    title: 'title',
     isViewElement: false,
+    controller: function ($scope, cms) {
+        $scope.$watch('model.position', function (position) {
+            const found = _.find(cms.types.Position.list, {name: position});
+            if (found) $scope.position = found.label;
+        });
+
+        const statusMap = [
+            {name: 'Arbeiten', value: 'working'},
+            {name: 'Urlaub', value: 'vacation'},
+            {name: 'Gekündigt', value: 'quit'}
+        ];
+
+        $scope.isWorking = function () {
+            var result = _.find($scope.model.work, work => work.status !== 'working');
+            if (result) return _.find(statusMap, {value: result.status}).name;
+        }
+    },
     fn: {
         findDefaultProfile: function (work) {
             return _.find(work.item, {default: true});
-        },
-        isWorking: function () {
-            var result = _.find(this.work, work => work.status !== 'working');
-            if (result) return result.status;
         }
     },
     autopopulate: true,
@@ -250,6 +266,12 @@ const Employee = cms.registerSchema({
         schema.virtual('company').get(function () {
             return _.map(this.work, work => work.company);
         });
+
+        schema.virtual('title').get(function () {
+            let str = '';
+            this.company.forEach(c => str += ` ${c.name} `);
+            return `${this.name}  ${this.Id ? this.Id : ''}  ${str}`;
+        });
     },
     info: {
         elementClass: 'col-sm-4',
@@ -262,7 +284,20 @@ const Employee = cms.registerSchema({
 const Shift = cms.registerSchema({
     weekDay: {
         type: String,
-        form: makeSelect('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'),
+        form: {
+            type: 'select',
+            templateOptions: {
+                options: [
+                    {name: 'So', value: 'sunday'},
+                    {name: 'Mo', value: 'monday'},
+                    {name: 'Di', value: 'tuesday'},
+                    {name: 'Mi', value: 'wednesday'},
+                    {name: 'Do', value: 'thursday'},
+                    {name: 'Fr', value: 'friday'},
+                    {name: 'Sa', value: 'sunday'},
+                ]
+            },
+        },
         label: 'Wochentag'
     },
     season: {
@@ -339,17 +374,30 @@ const PlanItem = cms.registerSchema({
     employee: {type: mongoose.Schema.Types.ObjectId, ref: 'Employee', autopopulate: {select: '_id name'}},
 }, {
     name: 'PlanItem',
+    label: 'Monatsplan',
     formatter: `
             <h4>{{model.name}}</h4>
         `,
     title: 'name',
-    isViewElement: false,
+    isViewElement: true,
     autopopulate: true,
     alwaysLoad: false
 });
 
-cms.registerWrapper('Plan', {
+cms.app.use('/plan_result2.html', cms.express.static(path.resolve(__dirname, 'plan_result2.html')));
+cms.app.use('/choose-profile.html', cms.express.static(path.resolve(__dirname, 'choose-profile.html')));
+cms.app.use('/add-more.html', cms.express.static(path.resolve(__dirname, 'add-more.html')));
+
+const Plan = cms.registerSchema({
+    name: {type: String}
+}, {
+    name: 'Plan',
+    label: 'Plan',
     formatterUrl: 'backend/plan.html',
+    title: 'name',
+    isViewElement: false,
+    autopopulate: true,
+    alwaysLoad: true,
     controller: function ($scope, cms, $uibModal, $timeout) {
         $scope.data = {
             month: new Date()
@@ -360,7 +408,7 @@ cms.registerWrapper('Plan', {
 
         $scope.show = function () {
 
-            cms.execServerFnForWrapper('Plan', 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
+            cms.execServerFn('Plan', $scope.model, 'getPlan', $scope.data.month, $scope.data.company, $scope.data.position).then(({data:{weeks, employees, emptyShifts}}) => {
                 const scope = $scope;
                 $uibModal.open({
                     templateUrl: 'plan_result2.html',
@@ -385,7 +433,8 @@ cms.registerWrapper('Plan', {
         }
 
         $scope.refresh = () => {
-            cms.execServerFnForWrapper('Plan', 'isExists', $scope.data.month).then(({data}) => {
+            cms.execServerFn('Plan', $scope.model, 'isExists', $scope.data.month).then(({data}) => {
+                data = JsonFn.parse(data);
                 $scope.exists = data;
             });
         }
@@ -602,185 +651,138 @@ cms.registerWrapper('Plan', {
 
 });
 
-
-/*cms.registerWrapper('FixConfirmTime', {
- formatter: `
- <div>
- <button class="btn btn-success btn-outline cms-btn btn-xs"
- ng-click="k = serverFn.fix();">
- Fix
- </button>
- <br>
- <p class="text-success">
- {{serverFnData[k].result}}
- </p>
- </div>
- `,
- controller: function ($scope, cms) {
- },
- serverFn: {
- fix: function*() {
- const company = yield Company.findOne({name:'LXL'}).lean();
- const checkevents = yield cms.getModel('CheckEvent').find({});
- for (const checkevent of checkevents) {
- checkevent.company = company;
- yield checkevent.save();
- }
-
- return 'successful';
- }
- }
-
- });*/
-
-
-cms.registerWrapper('Lohn', {
-    formatterUrl: 'backend/active-employee.html',
-    controller: function ($scope, cms, formService, $uibModal) {
-        $scope.data = {
-            month: new Date(),
-            position: 'Alle'
-        };
-        $scope.companyList = cms.types.Company.list;
-        $scope.positions = cms.types.Position.list.map(v => v.name);
-        const refreshLocal = ({position, company}) => {
-            if (position && company) {
-                $scope.records = $scope._records.filter(e => {
-                    if (position === 'Alle') return e.company._id === company;
-                    return e.employee.position === position && e.company._id === company;
-                });
-            }
-        };
-        $scope.$watch('data', refreshLocal, true);
-
-        $scope.showGenerateBtn = false;
-
-        const refresh = (month) => {
-            cms.execServerFnForWrapper('Lohn', 'isExists', month).then(({data}) => {
-                $scope.showGenerateBtn = !data;
-                if (data) {
-                    cms.execServerFnForWrapper('Lohn', 'getRecords', month).then(({data}) => {
-                        $scope._records = data;
-                        refreshLocal($scope.data);
-                    });
-                } else {
-                    $scope._records = [];
-                    refreshLocal($scope.data);
-                }
-            });
-        };
-
-        $scope.$watch('data.month', refresh);
-
-        $scope.refresh = () => refresh($scope.data.month);
-
-        $scope.formService = formService;
-
-        $scope.chooseProfile = function (record) {
-            $uibModal.open({
-                templateUrl: 'choose-profile.html',
-                controller: function ($scope, $uibModalInstance, formService) {
-                    $scope.data = {};
-                    $scope.profiles = record.profiles;
-                    $scope.cancel = ()=>$uibModalInstance.dismiss('cancel');
-                    $scope.choose = profile => {
-                        $uibModalInstance.close(profile);
-                    }
-                }
-            }).result.then(profile => {
-                _.assign(record, _.pickBy(profile, (v, k) => k !== '_id', true));
-                cms.updateElement('EmployeeRecord', record, () => {
-                    confirm('update successful');
-                    refresh($scope.data.month);
-                });
-            });
-        }
-
-        $scope.remove = function (record) {
-            cms.removeElement('EmployeeRecord', record._id, () => $scope.refresh());
-        }
-
-        $scope.addMore = function () {
-            cms.execServerFnForWrapper('Lohn', 'findNotWorkingEmployees', $scope.data.month).then(({data}) => {
-                $uibModal.open({
-                    templateUrl: 'add-more.html',
-                    controller: ['$scope', '$uibModalInstance', 'formService', function (scope, instance, formService) {
-                        scope.employeeList = data;
-                        scope.companyList = $scope.companyList;
-                        scope.data = {};
-                        scope.refresh = function () {
-                            if (!scope.data.company) return;
-                            scope.employees = _.filter(scope.employeeList, employee => {
-                                return _.find(employee.company, {_id: scope.data.company._id});
-                            })
-                        };
-                        scope.$watch('data.company', scope.refresh);
-                        scope._ = _;
-                        scope.instance = instance;
-
-                        scope.result = [];
-
-                        scope.cancel = () => instance.dismiss('cancel');
-                    }]
-                }).result.then(employees => {
-                    cms.execServerFnForWrapper('Lohn', 'addNotWorkingEmployees', employees, $scope.data.month).then(({data}) => {
-                        $scope.refresh();
-                    });
-                });
-            });
-
-        }
-
-        $scope.$watch('serverFnData', () => $scope.refresh(), true)
+const Lohn = cms.registerSchema({
+        name: {type: String},
     },
+    {
+        name: 'Lohn',
+        formatterUrl: 'backend/active-employee.html',
+        isViewElement: false,
+        alwaysLoad: true,
+        controller: function ($scope, cms, formService, $uibModal) {
+            $scope.data = {
+                month: new Date(),
+                position: 'Alle'
+            };
+            $scope.companyList = cms.types.Company.list;
+            $scope.positions = cms.types.Position.list.map(v => v.name);
+            const refreshLocal = ({position, company}) => {
+                if (position && company) {
+                    $scope.records = _.filter($scope._records, e => {
+                        if (position === 'Alle') return e.company._id === company;
+                        return e.employee.position === position && e.company._id === company;
+                    });
+                }
+            };
+            $scope.$watch('data', refreshLocal, true);
 
-    serverFn: {
-        isExists: function*(month) {
-            const count = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).count();
-            return count > 0;
-        },
-        findNotWorkingEmployees: function*(month) {
-            const records = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).lean();
-            const _ids = records.map(record => record.employee._id)
+            $scope.showGenerateBtn = false;
 
-            const employees = yield Employee.find({'_id': {$nin: _ids}});
-            return employees;
-        },
-        addNotWorkingEmployees: function*(employees, month) {
-            for (const employee of employees) {
-                for (const work of employee.work) {
-                    const defaultProfile = _.find(work.item, {default: true});
-                    const record = {
-                        employee: employee._id,
-                        month,
-                        company: work.company
+            const refresh = (month) => {
+                cms.execServerFn('Lohn', $scope.model, 'isExists', month).then(({data}) => {
+                    data = JsonFn.parse(data, true);
+                    $scope.showGenerateBtn = !data;
+                    if (data) {
+                        cms.execServerFn('Lohn', $scope.model, 'getRecords', month).then(({data}) => {
+                            $scope._records = data;
+                            refreshLocal($scope.data);
+                        });
+                    } else {
+                        $scope._records = [];
+                        refreshLocal($scope.data);
                     }
-                    if (defaultProfile) {
-                        _.assign(record, defaultProfile);
-                        delete record._id;
-                        record.position = employee.position;
-                        yield EmployeeRecord.create(record);
+                });
+            };
+
+            $scope.$watch('data.month', refresh);
+
+            $scope.refresh = () => refresh($scope.data.month);
+
+            $scope.formService = formService;
+
+            $scope.chooseProfile = function (record) {
+                $uibModal.open({
+                    templateUrl: 'choose-profile.html',
+                    controller: function ($scope, $uibModalInstance, formService) {
+                        $scope.data = {};
+                        $scope.profiles = record.profiles;
+                        $scope.cancel = ()=>$uibModalInstance.dismiss('cancel');
+                        $scope.choose = profile => {
+                            $uibModalInstance.close(profile);
+                        }
                     }
-                }
+                }).result.then(profile => {
+                    _.assign(record, _.pickBy(profile, (v, k) => k !== '_id', true));
+                    cms.updateElement('EmployeeRecord', record, () => {
+                        confirm('update successful');
+                        refresh($scope.data.month);
+                    });
+                });
             }
-            return 'erfolgreich';
 
+            $scope.remove = function (record) {
+                cms.removeElement('EmployeeRecord', record._id, () => $scope.refresh());
+            }
+
+            $scope.addMore = function () {
+                cms.execServerFn('Lohn', $scope.model, 'findNotWorkingEmployees', $scope.data.month).then(({data}) => {
+                    $uibModal.open({
+                        templateUrl: 'add-more.html',
+                        controller: ['$scope', '$uibModalInstance', 'formService', function (scope, instance, formService) {
+                            scope.employeeList = data;
+                            scope.companyList = $scope.companyList;
+                            scope.data = {};
+                            scope.refresh = function () {
+                                if (!scope.data.company) return;
+                                scope.employees = _.filter(scope.employeeList, employee => {
+                                    return _.find(employee.company, {_id: scope.data.company._id});
+                                })
+                            };
+                            scope.$watch('data.company', scope.refresh);
+                            scope._ = _;
+                            scope.instance = instance;
+
+                            scope.result = [];
+
+                            scope.cancel = () => instance.dismiss('cancel');
+                        }]
+                    }).result.then(employees => {
+                        cms.execServerFn('Lohn', $scope.model, 'addNotWorkingEmployees', employees, $scope.data.month).then(({data}) => {
+                            $scope.refresh();
+                        });
+                    });
+                });
+
+            }
+
+            $scope.$watch('serverFnData', () => $scope.refresh(), true)
         },
-        generate: function*(month) {
-            const employees = yield Employee.find().lean();
-            for (const employee of employees) {
-                for (const work of employee.work) {
-                    if (work.status === 'working') {
+
+        serverFn: {
+            isExists: function*(month) {
+                const count = yield EmployeeRecord.find({
+                    month: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    }
+                }).count();
+                return count > 0;
+            },
+            findNotWorkingEmployees: function*(month) {
+                const records = yield EmployeeRecord.find({
+                    month: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    }
+                }).lean();
+                const _ids = records.map(record => record.employee._id)
+
+                const employees = yield Employee.find({'_id': {$nin: _ids}});
+                return employees;
+            },
+            addNotWorkingEmployees: function*(employees, month) {
+                for (const employee of employees) {
+                    for (const work of employee.work) {
                         const defaultProfile = _.find(work.item, {default: true});
                         const record = {
                             employee: employee._id,
@@ -795,50 +797,75 @@ cms.registerWrapper('Lohn', {
                         }
                     }
                 }
-            }
-            return 'erfolgreich';
-        },
-        getRecords: function*(month) {
-            const records = yield EmployeeRecord.find({
-                month: {
-                    $gte: cms.utils.beginOfMonth(month),
-                    $lte: cms.utils.endOfMonth(month)
-                }
-            }).lean();
-            for (const record of records) {
-                const report = yield cms.Wrapper.list.Report.serverFn.totalHourForEmployee(record.employee, {
-                    from: cms.utils.beginOfMonth(month),
-                    to: cms.utils.endOfMonth(month)
-                });
-                if (report) {
-                    record.totalHour = report.total;
-                }
-                if (record.manualTotalHour > 0) record.totalHour = record.manualTotalHour;
-                if (record.fixSalary > 0) {
-                    record.realSalary = record.fixSalary + record.bonus;
-                } else {
-                    record.salary = record.maxHour * record.workrate;
+                return 'erfolgreich';
 
-                    if (record.totalHour) {
-                        if (record.equivalentHour > 0) {
-                            record.restHour = record.totalHour - record.equivalentHour;
-                            record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
-                            record.realSalary = record.remaining + record.salary;
-                        } else {
-                            record.restHour = record.totalHour - record.maxHour;
-                            record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
+            },
+            generate: function*(month) {
+                month = moment(month).startOf('month').toDate();
+                const employees = yield Employee.find().lean();
+                for (const employee of employees) {
+                    for (const work of employee.work) {
+                        if (work.status === 'working') {
+                            const defaultProfile = _.find(work.item, {default: true});
+                            const record = {
+                                employee: employee._id,
+                                month,
+                                company: work.company
+                            }
+                            if (defaultProfile) {
+                                _.assign(record, defaultProfile);
+                                delete record._id;
+                                record.position = employee.position;
+                                yield EmployeeRecord.create(record);
+                            }
                         }
                     }
                 }
+                return 'erfolgreich';
+            },
+            getRecords: function*(month) {
+                const records = yield EmployeeRecord.find({
+                    month: {
+                        $gte: cms.utils.beginOfMonth(month),
+                        $lte: cms.utils.endOfMonth(month)
+                    }
+                }).lean();
+                for (const record of records) {
+                    const report = yield cms.Types.Report.serverFn.totalHourForEmployee(record.employee, {
+                        from: cms.utils.beginOfMonth(month),
+                        to: cms.utils.endOfMonth(month)
+                    });
+                    if (report) {
+                        record.totalHour = report.total;
+                    }
+                    if (record.manualTotalHour > 0) record.totalHour = record.manualTotalHour;
+                    if (record.fixSalary > 0) {
+                        record.realSalary = record.fixSalary + record.bonus;
+                    } else {
+                        record.salary = record.maxHour * record.workrate;
 
-                const work = _.find(record.employee.work, w => w.company._id.equals(record.company._id));
-                if (work) {
-                    record.profiles = work.item;
+                        if (record.totalHour) {
+                            if (record.equivalentHour > 0) {
+                                record.restHour = record.totalHour - record.equivalentHour;
+                                record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
+                                record.realSalary = record.remaining + record.salary;
+                            } else {
+                                record.restHour = record.totalHour - record.maxHour;
+                                record.remaining = record.restHour * record.realWorkrate + (record.bonus || 0);
+                            }
+                        }
+                    }
+
+                    const work = _.find(record.employee.work, function (w) {
+                        if (w.company._id) return w.company._id.equals(record.company._id)
+                        return w.company.equals(record.company._id);
+                    });
+
+                    if (work) {
+                        record.profiles = work.item;
+                    }
                 }
+                return records;
             }
-            return records;
         }
-    }
-
-});
-
+    });

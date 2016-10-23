@@ -17,8 +17,8 @@ const CheckEvent = cms.registerSchema({
             type: 'select',
             templateOptions: {
                 options: [
-                    {name: 'normal',label: 'Normal'},
-                    {name: 'special',label: 'Spezial'}
+                    {name: 'normal', label: 'Normal'},
+                    {name: 'special', label: 'Spezial'}
                 ]
             }
         }
@@ -41,7 +41,7 @@ const CheckEvent = cms.registerSchema({
             <h4>{{model.time}}</h4>
         `,
     title: 'time',
-    isViewElement: false,
+    isViewElement: true,
     mTemplate: `
             <StackLayout>
                 <Label [text]="model.time"></Label>
@@ -90,47 +90,57 @@ const AddEmployee = cms.registerSchema({
         `,
 });
 
-//noinspection JSUnresolvedVariable
-cms.registerWrapper('Report', {
-    formatterUrl: path.resolve(__dirname, 'report.html'),
-    controller: function ($scope, cms) {
-        $scope.companyList = cms.types.Company.list;
-        const now = new Date();
-
-        $scope.data = {
-            from: new Date(now.getFullYear(), 0, 1),
-            to: new Date(now.getFullYear(), 11, 31),
-            month: now
-        };
-
-        $scope.report = function () {
-            cms.execServerFnForWrapper('Report', 'totalHour', {
-                from: $scope.data.from,
-                to: $scope.data.to,
-                company: $scope.data.company
-            }).then(({data}) => {
-                $scope.employees = JsonFn.clone(data, true);
-            });
-        }
-
-        $scope.$watch('data.month',(month) => {
-            $scope.data.from = moment(month).clone().subtract(1, 'months').date(20).startOf('day').toDate();
-            $scope.data.to = moment(month).clone().date(19).endOf('day').toDate();
-        })
+const Report = cms.registerSchema({
+        name: {type: String}
     },
-    serverFn: {
-        totalHourForEmployee,
-        totalHour: function*(range) {
-            const employees = yield cms.Types.Employee.Model.find({'work.company': range.company});
+    {
+        name: 'Report',
+        label: 'Bericht',
+        formatterUrl: path.resolve(__dirname, 'report.html'),
+        title: 'name',
+        isViewElement: false,
+        alwaysLoad: true,
+        controller: function ($scope, cms, formService) {
+            $scope.companyList = cms.types.Company.list;
+            const now = new Date();
 
-            const _result = [];
-            for (let employee of employees) {
-                _result.push(yield* totalHourForEmployee(employee, range));
+            $scope.formService = formService;
+
+            $scope.data = {
+                from: new Date(now.getFullYear(), 0, 1),
+                to: new Date(now.getFullYear(), 11, 31),
+                month: now
+            };
+
+            $scope.report = function () {
+                cms.execServerFn('Report', $scope.model, 'totalHour', {
+                    from: $scope.data.from,
+                    to: $scope.data.to,
+                    company: $scope.data.company
+                }).then(({data}) => {
+                    $scope.employees = JsonFn.clone(data, true);
+                    $scope.employees.sort((e1, e2)=>e2.total - e1.total)
+                });
             }
-            return _result;
+
+            $scope.$watch('data.month', (month) => {
+                $scope.data.from = moment(month).clone().subtract(1, 'months').date(20).startOf('day').toDate();
+                $scope.data.to = moment(month).clone().date(19).endOf('day').toDate();
+            })
+        },
+        serverFn: {
+            totalHourForEmployee,
+            totalHour: function*(range) {
+                const employees = yield cms.Types.Employee.Model.find({'work.company': range.company});
+
+                const _result = [];
+                for (let employee of employees) {
+                    _result.push(yield* totalHourForEmployee(employee, range));
+                }
+                return _result;
+            }
         }
-    }
-});
+    });
 
 function* totalHourForEmployee(employee, range) {
     const list = yield CheckEvent.find({
@@ -172,5 +182,5 @@ function* totalHourForEmployee(employee, range) {
     groupList.forEach(day => day.forEach(group => {
         if (group.length === 1) forgetLogOut.push(group[0]);
     }));
-    return {name: employee.name, total, list: groupList, forgetLogOut};
+    return {name: employee.name,_id:employee._id, total, list: groupList, forgetLogOut};
 }

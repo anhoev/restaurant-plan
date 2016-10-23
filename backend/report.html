@@ -1,4 +1,4 @@
-<h4>Report</h4>
+<h4>Bericht</h4>
 
 <form ng-submit="report()" novalidate class="form-horizontal">
     <div class="form-group">
@@ -29,7 +29,7 @@
 
     <div class="form-group">
         <div class="col-sm-12">
-            <button class="btn btn-primary" type="submit">Calculate</button>
+            <button class="btn btn-primary" type="submit">Rechnen</button>
         </div>
     </div>
 </form>
@@ -38,13 +38,14 @@
 <br><br>
 
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-md-6" style="height: 700px;overflow-y: auto">
         <div ng-repeat="employee in employees"
              ng-click="data.employee = employee;"
              class="panel panel-default" style="margin-bottom: 10px;cursor: pointer">
             <div class="panel-body" ng-class="{'bg-info': data.employee === employee}">
-                <span class="text-primary">{{employee.name}} : <span style="font-weight: bold;">{{employee.total}} hours</span>, forget logout in day:</span>
-                <span class="text-info" ng-repeat="forget in employee.forgetLogOut">{{forget.time | date:'dd-MM'}},</span>
+                <span class="text-primary">{{employee.name}} : <span
+                        style="font-weight: bold;">{{employee.total}} Stunden</span>
+                </span>
             </div>
         </div>
     </div>
@@ -57,7 +58,17 @@
                     </h4>
                     <div ng-repeat="day in data.employee.list">
                         <div ng-repeat="group in day">
-                            Date: {{group[0].time | date:'dd-MM'}} , {{group[0].confirmTime | date:'HH:mm'}} - {{group[1].confirmTime | date:'HH:mm'}}
+                            Tag:
+                            <span
+                                    ng-click="formService.add({employee:{_id:data.employee._id},company:{_id:data.company},time:group[0].confirmTime,confirmTime:group[0].confirmTime,isCheckIn:false},'CheckEvent',report)">
+                            {{group[0].time | date:'dd-MM'}}
+                            </span>
+                            ,
+
+                            <span ng-click="formService.edit(group[0]._id,'CheckEvent',report)">{{group[0].confirmTime | date:'HH:mm'}}</span>
+                            -
+                            <span ng-click="formService.edit(group[1]._id,'CheckEvent',report)">{{group[1].confirmTime | date:'HH:mm'}}</span>
+
                             <span ng-show="group[0].special">&nbsp;(Ausnahme)</span>
                         </div>
                     </div>

@@ -17,5 +17,5 @@ require('./menu');
 cms.server('backend/en', '');
 cms.data.online.autoOpenAdmin = true;
 
-cms.data.online.wsAddress = 'ws://192.168.1.5:8888';
+cms.data.online.wsAddress = 'ws://localhost:8888';
 // cms.data.online.wsAddress = 'ws://62.75.143.7:8888';
