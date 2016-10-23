@@ -60,7 +60,7 @@
                         <div ng-repeat="group in day">
                             Tag:
                             <span
-                                    ng-click="formService.add({employee:{_id:data.employee._id},company:{_id:data.company},time:group[0].confirmTime,confirmTime:group[0].confirmTime,isCheckIn:false},'CheckEvent',report)">
+                                    ng-click="formService.add({employee:data.employee._id,company:data.company,time:group[0].confirmTime,confirmTime:group[0].confirmTime,isCheckIn:false},'CheckEvent',report)">
                             {{group[0].time | date:'dd-MM'}}
                             </span>
                             ,

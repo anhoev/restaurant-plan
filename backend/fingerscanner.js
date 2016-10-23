@@ -13,12 +13,13 @@ const CheckEvent = cms.registerSchema({
     isCheckIn: {type: Boolean, default: true},
     confirmTime: {type: Date, default: Date.now},
     type: {
-        type: String, form: {
+        type: String,
+        form: {
             type: 'select',
             templateOptions: {
                 options: [
-                    {name: 'normal', label: 'Normal'},
-                    {name: 'special', label: 'Spezial'}
+                    {value: 'normal', name: 'Normal'},
+                    {value: 'special', name: 'Spezial'}
                 ]
             }
         }
@@ -182,5 +183,5 @@ function* totalHourForEmployee(employee, range) {
     groupList.forEach(day => day.forEach(group => {
         if (group.length === 1) forgetLogOut.push(group[0]);
     }));
-    return {name: employee.name,_id:employee._id, total, list: groupList, forgetLogOut};
+    return {name: employee.name, _id: employee._id, total, list: groupList, forgetLogOut};
 }
